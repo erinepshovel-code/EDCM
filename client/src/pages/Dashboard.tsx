@@ -12,10 +12,10 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="grid grid-cols-12 gap-6 pb-20">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 pb-20">
         
         {/* Top Stats Row */}
-        <div className="col-span-12 grid grid-cols-4 gap-6">
+        <div className="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           <MetricCard 
             code="C" label="Constraint Strain" 
             value={MOCK_STATE.metrics.C.value} 
@@ -51,28 +51,28 @@ export default function Dashboard() {
         </div>
 
         {/* Main Analysis Column */}
-        <div className="col-span-8 space-y-6">
+        <div className="col-span-1 md:col-span-8 space-y-4 md:space-y-6">
           
           {/* Transcript Analyzer */}
-          <div className="glass-panel p-0 rounded-sm overflow-hidden flex flex-col h-[600px]">
-            <div className="px-6 py-4 border-b border-border bg-card/50 flex justify-between items-center">
-              <h3 className="font-mono font-medium text-sm">LIVE TRANSCRIPT ANALYSIS</h3>
-              <div className="flex gap-2">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-xs font-mono text-muted-foreground">RECORDING</span>
+          <div className="glass-panel p-0 rounded-sm overflow-hidden flex flex-col h-[400px] md:h-[600px]">
+            <div className="px-4 md:px-6 py-3 md:py-4 border-b border-border bg-card/50 flex justify-between items-center">
+              <h3 className="font-mono font-medium text-xs md:text-sm">LIVE TRANSCRIPT ANALYSIS</h3>
+              <div className="flex gap-2 items-center">
+                <span className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] md:text-xs font-mono text-muted-foreground">RECORDING</span>
               </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
               {MOCK_TRANSCRIPT.map((turn) => (
                 <div 
                   key={turn.id} 
                   className={cn(
-                    "relative pl-6 py-2 transition-all cursor-pointer border-l-2",
+                    "relative pl-4 md:pl-6 py-2 transition-all cursor-pointer border-l-2",
                     selectedTurn === turn.id 
                       ? "border-primary bg-primary/5" 
                       : "border-transparent hover:bg-white/5",
-                    turn.role === "user" ? "ml-0 mr-12" : "ml-12 mr-0"
+                    turn.role === "user" ? "ml-0 mr-8 md:mr-12" : "ml-8 md:ml-12 mr-0"
                   )}
                   onClick={() => setSelectedTurn(turn.id)}
                 >
@@ -99,7 +99,7 @@ export default function Dashboard() {
                 </div>
               ))}
               
-              <div className="border-t border-dashed border-border mt-8 pt-4">
+              <div className="border-t border-dashed border-border mt-6 md:mt-8 pt-4">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono animate-pulse">
                   <span>&gt;</span> Awaiting input...
                 </div>
@@ -110,8 +110,8 @@ export default function Dashboard() {
         </div>
 
         {/* Right Column: Circuit & Details */}
-        <div className="col-span-4 space-y-6">
-          <div className="h-[350px]">
+        <div className="col-span-1 md:col-span-4 space-y-4 md:space-y-6">
+          <div className="h-[300px] md:h-[350px]">
             <DissonanceCircuit 
               Et={MOCK_STATE.energy.Et} 
               st={MOCK_STATE.energy.st} 
@@ -120,23 +120,23 @@ export default function Dashboard() {
           </div>
 
           {/* Diagnostic Panel */}
-          <div className="glass-panel p-6 rounded-sm">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">Diagnostic State</h3>
+          <div className="glass-panel p-4 md:p-6 rounded-sm">
+            <h3 className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">Diagnostic State</h3>
             
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-12 w-12 rounded bg-warning/20 flex items-center justify-center border border-warning/50">
-                <AlertTriangle className="h-6 w-6 text-warning" />
+              <div className="h-10 w-10 md:h-12 md:w-12 rounded bg-warning/20 flex items-center justify-center border border-warning/50 shrink-0">
+                <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-warning" />
               </div>
               <div>
-                <div className="text-lg font-bold text-warning tracking-tight">LOAD SATURATION</div>
-                <div className="text-xs text-muted-foreground">Threshold crossed at 10:42:49</div>
+                <div className="text-base md:text-lg font-bold text-warning tracking-tight">LOAD SATURATION</div>
+                <div className="text-[10px] md:text-xs text-muted-foreground">Threshold crossed at 10:42:49</div>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between text-xs border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">Primary Failure Mode</span>
-                <span className="font-mono text-foreground">Looping Instability</span>
+                <span className="font-mono text-foreground text-right ml-2">Looping Instability</span>
               </div>
                <div className="flex justify-between text-xs border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">Risk Level</span>
@@ -144,7 +144,7 @@ export default function Dashboard() {
               </div>
                <div className="flex justify-between text-xs pb-2">
                 <span className="text-muted-foreground">Recommended Action</span>
-                <span className="font-mono text-primary">Force Constraint Resolution</span>
+                <span className="font-mono text-primary text-right ml-2">Force Constraint Resolution</span>
               </div>
             </div>
           </div>
