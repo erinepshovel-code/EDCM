@@ -77,10 +77,10 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-20 h-[calc(100vh-100px)]">
+      <div className="flex flex-col lg:grid lg:grid-cols-12 gap-6 pb-20 lg:h-[calc(100vh-100px)]">
         
         {/* LEFT COLUMN: Timeline & Input */}
-        <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-hidden">
+        <div className="lg:col-span-8 flex flex-col gap-4 min-h-[600px] lg:h-full lg:overflow-hidden">
           {/* Metadata Bar */}
           <div className="flex items-center justify-between px-4 py-2 glass-panel rounded-sm shrink-0">
              <div className="flex flex-col">
@@ -132,7 +132,7 @@ export default function Dashboard() {
         </div>
 
         {/* RIGHT COLUMN: Analysis */}
-        <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto pr-2">
+        <div className="lg:col-span-4 flex flex-col gap-6 lg:h-full lg:overflow-y-auto lg:pr-2">
           
           {/* Analysis Window Control */}
           <div className="glass-panel p-4 rounded-sm">
