@@ -22,6 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 
+import { CollapsibleFieldList } from "@/components/dashboard/CollapsibleFieldList";
+
 export default function Dashboard() {
   const [expressions, setExpressions] = useState<FieldExpression[]>(INITIAL_EXPRESSIONS);
   const [fields, setFields] = useState<ConsciousnessField[]>(INITIAL_FIELDS);
@@ -159,6 +161,8 @@ export default function Dashboard() {
                <span>Session (100)</span>
              </div>
           </div>
+
+          <CollapsibleFieldList fields={fields} />
 
           <Tabs defaultValue="expression" className="w-full" onValueChange={(v) => setAnalysisScope(v as any)}>
             <TabsList className="w-full grid grid-cols-3 bg-card/50 border border-border/50">
