@@ -4,6 +4,7 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { DissonanceCircuit } from "@/components/dashboard/DissonanceCircuit";
 import { ConversationInput } from "@/components/dashboard/ConversationInput";
 import { TimelineView } from "@/components/dashboard/TimelineView";
+import { InsightCard } from "@/components/dashboard/InsightCard";
 import { 
   MOCK_STATE, 
   INITIAL_EXPRESSIONS, 
@@ -12,16 +13,20 @@ import {
   FieldExpression, 
   ConsciousnessField,
   analyzeExpression,
-  MetricData
+  MetricData,
+  MOCK_INSIGHTS
 } from "@/lib/edcm-data";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, User, Users, LineChart, Brain, Share2, Network } from "lucide-react";
+import { AlertTriangle, User, Users, LineChart, Brain, Share2, Network, Sliders } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const [expressions, setExpressions] = useState<FieldExpression[]>(INITIAL_EXPRESSIONS);
   const [fields, setFields] = useState<ConsciousnessField[]>(INITIAL_FIELDS);
   const [selectedExpressionId, setSelectedExpressionId] = useState<string | null>(null);
+  const [analysisWindow, setAnalysisWindow] = useState([20]);
   
   // Stats View State
   const [analysisScope, setAnalysisScope] = useState<"expression" | "field" | "system">("expression");
@@ -129,6 +134,32 @@ export default function Dashboard() {
         {/* RIGHT COLUMN: Analysis */}
         <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto pr-2">
           
+          {/* Analysis Window Control */}
+          <div className="glass-panel p-4 rounded-sm">
+             <div className="flex justify-between items-center mb-3">
+               <h4 className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-2">
+                 <Sliders className="h-3 w-3" />
+                 Analysis Window
+               </h4>
+               <Badge variant="outline" className="font-mono text-[10px]">
+                 Last {analysisWindow[0]} Turns
+               </Badge>
+             </div>
+             <Slider 
+               defaultValue={[20]} 
+               max={100} 
+               min={5} 
+               step={5} 
+               value={analysisWindow} 
+               onValueChange={setAnalysisWindow}
+               className="mb-1"
+             />
+             <div className="flex justify-between text-[10px] text-muted-foreground/50 font-mono">
+               <span>Local (5)</span>
+               <span>Session (100)</span>
+             </div>
+          </div>
+
           <Tabs defaultValue="expression" className="w-full" onValueChange={(v) => setAnalysisScope(v as any)}>
             <TabsList className="w-full grid grid-cols-3 bg-card/50 border border-border/50">
               <TabsTrigger value="expression" className="text-xs">Expression</TabsTrigger>
@@ -176,6 +207,11 @@ export default function Dashboard() {
                      Signal <strong>{selectedExpressionId?.split('-')[1]}</strong> indicates high <strong>Fixation (0.88)</strong>. The field is reinforcing a prior pattern without integrating new interference.
                    </p>
                  </div>
+                 
+                 {/* Local Insight */}
+                 {MOCK_INSIGHTS.filter(i => i.scope === "Local").map(insight => (
+                   <InsightCard key={insight.id} insight={insight} />
+                 ))}
               </TabsContent>
 
               <TabsContent value="field" className="mt-0 space-y-4">
@@ -209,6 +245,11 @@ export default function Dashboard() {
                      Multi-field interference pattern detecting phase-cancellation in operational domain.
                    </div>
                  </div>
+
+                 {/* Segment Insight */}
+                 {MOCK_INSIGHTS.filter(i => i.scope === "Segment").map(insight => (
+                   <InsightCard key={insight.id} insight={insight} />
+                 ))}
               </TabsContent>
             </div>
           </Tabs>

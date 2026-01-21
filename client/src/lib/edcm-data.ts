@@ -59,6 +59,18 @@ export interface SystemState {
   };
 }
 
+export type InsightScope = "Local" | "Segment" | "Session";
+
+export interface Insight {
+  id: string;
+  scope: InsightScope;
+  title: string;
+  description: string;
+  falsification: string;
+  confidence: number;
+  related_metrics: string[];
+}
+
 // --- Helpers & Mock Logic ---
 
 const generateHistory = (base: number, volatility: number) => 
@@ -120,6 +132,28 @@ export const INITIAL_EXPRESSIONS: FieldExpression[] = [
     field_id: "f3",
     text: "I acknowledge the constraint. The deployment must happen by 5 PM. The audit logging is required. I will proceed with the deployment to meet the deadline.",
     metrics: { C: 0.95, R: 0.1, F: 0.9, E: 0.5, D: 0.6, N: 0.3, I: 0.9, O: 0.95, L: 0.3, P: 0.0 }
+  }
+];
+
+// Mock Insights
+export const MOCK_INSIGHTS: Insight[] = [
+  {
+    id: "ins-01",
+    scope: "Local",
+    title: "Looping Signal Fixation",
+    description: "Recent signal repetition indicates a lack of integration of the 'Untested Code' constraint. Field F3 is restating intent without modification.",
+    falsification: "If F3 produces a novel synthesis or explicitly addresses the risk factor in the next 2 turns, this pattern is falsified.",
+    confidence: 0.85,
+    related_metrics: ["F", "I"]
+  },
+  {
+    id: "ins-02",
+    scope: "Segment",
+    title: "Constraint Saturation",
+    description: "Over the last 6 turns, Constraint Strain (C) has risen linearly. No successful resolution strategies have been observed.",
+    falsification: "A drop in C or a rise in Progress (P) > 0.3 would indicate resolution capability.",
+    confidence: 0.92,
+    related_metrics: ["C", "P"]
   }
 ];
 
