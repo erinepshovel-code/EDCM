@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { 
   Send, 
-  UserPlus, 
-  Users,
+  Plus, 
+  Brain,
   MessageSquarePlus,
-  ChevronDown
+  ChevronDown,
+  History
 } from "lucide-react";
 import { 
   Select,
@@ -25,46 +26,52 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Participant, SpeakerRole } from "@/lib/edcm-data";
+import { Switch } from "@/components/ui/switch";
+import { ConsciousnessField, FieldType } from "@/lib/edcm-data";
 
 interface ConversationInputProps {
-  participants: Participant[];
-  onAddTurn: (text: string, speakerId: string) => void;
-  onAddParticipant: (p: Participant) => void;
+  fields: ConsciousnessField[];
+  onAddExpression: (text: string, fieldId: string, isReconstruction: boolean) => void;
+  onAddField: (f: ConsciousnessField) => void;
 }
 
 export function ConversationInput({ 
-  participants, 
-  onAddTurn,
-  onAddParticipant 
+  fields, 
+  onAddExpression,
+  onAddField 
 }: ConversationInputProps) {
   const [text, setText] = useState("");
-  const [selectedSpeakerId, setSelectedSpeakerId] = useState<string>(participants[0]?.id || "");
+  const [selectedFieldId, setSelectedFieldId] = useState<string>(fields[0]?.id || "");
+  const [isReconstruction, setIsReconstruction] = useState(false);
   
-  const [newParticipantName, setNewParticipantName] = useState("");
-  const [newParticipantRole, setNewParticipantRole] = useState<SpeakerRole>("participant");
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState<FieldType>("other");
+  const [newFieldDescriptor, setNewFieldDescriptor] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleSubmit = () => {
-    if (!text.trim() || !selectedSpeakerId) return;
-    onAddTurn(text, selectedSpeakerId);
+    if (!text.trim() || !selectedFieldId) return;
+    onAddExpression(text, selectedFieldId, isReconstruction);
     setText("");
+    setIsReconstruction(false);
   };
 
-  const handleCreateParticipant = () => {
-    if (!newParticipantName.trim()) return;
+  const handleCreateField = () => {
+    if (!newFieldLabel.trim()) return;
     
-    const newId = `p${Date.now()}`; // simple ID generation
-    const newParticipant: Participant = {
+    const newId = `f${Date.now()}`;
+    const newField: ConsciousnessField = {
       id: newId,
-      name: newParticipantName,
-      role: newParticipantRole,
-      color: `hsl(${Math.random() * 360} 70% 60%)` // random color
+      label: newFieldLabel,
+      type: newFieldType,
+      descriptor: newFieldDescriptor,
+      color: `hsl(${Math.random() * 360} 70% 60%)`
     };
     
-    onAddParticipant(newParticipant);
-    setSelectedSpeakerId(newId); // auto-select new participant
-    setNewParticipantName("");
+    onAddField(newField);
+    setSelectedFieldId(newId);
+    setNewFieldLabel("");
+    setNewFieldDescriptor("");
     setIsDialogOpen(false);
   };
 
@@ -73,20 +80,20 @@ export function ConversationInput({
       <div className="flex flex-col gap-3">
         {/* Controls Row */}
         <div className="flex items-center gap-2 justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            <Select value={selectedSpeakerId} onValueChange={setSelectedSpeakerId}>
+          <div className="flex items-center gap-2 flex-1 flex-wrap">
+            <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
               <SelectTrigger className="w-[180px] h-8 text-xs font-mono bg-background/50 border-border/50">
-                <SelectValue placeholder="Select Speaker" />
+                <SelectValue placeholder="Select Field" />
               </SelectTrigger>
               <SelectContent>
-                {participants.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className="text-xs">
+                {fields.map((f) => (
+                  <SelectItem key={f.id} value={f.id} className="text-xs">
                     <span className="flex items-center gap-2">
                       <span 
                         className="w-2 h-2 rounded-full" 
-                        style={{ backgroundColor: p.color || "gray" }}
+                        style={{ backgroundColor: f.color || "gray" }}
                       />
-                      {p.name}
+                      {f.label}
                     </span>
                   </SelectItem>
                 ))}
@@ -96,64 +103,93 @@ export function ConversationInput({
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                  <UserPlus className="h-4 w-4" />
+                  <Plus className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Add New Participant</DialogTitle>
+                  <DialogTitle>Define New Field</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right text-xs uppercase text-muted-foreground">
-                      Name
+                    <Label htmlFor="label" className="text-right text-xs uppercase text-muted-foreground">
+                      Label
                     </Label>
                     <Input 
-                      id="name" 
-                      value={newParticipantName} 
-                      onChange={(e) => setNewParticipantName(e.target.value)}
+                      id="label" 
+                      value={newFieldLabel} 
+                      onChange={(e) => setNewFieldLabel(e.target.value)}
+                      placeholder="e.g., Collective, Field C"
                       className="col-span-3 font-mono" 
                     />
                   </div>
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="role" className="text-right text-xs uppercase text-muted-foreground">
-                      Role
+                    <Label htmlFor="descriptor" className="text-right text-xs uppercase text-muted-foreground">
+                      Context
+                    </Label>
+                    <Input 
+                      id="descriptor" 
+                      value={newFieldDescriptor} 
+                      onChange={(e) => setNewFieldDescriptor(e.target.value)}
+                      placeholder="Optional descriptor"
+                      className="col-span-3 font-mono" 
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="type" className="text-right text-xs uppercase text-muted-foreground">
+                      Type
                     </Label>
                     <Select 
-                      value={newParticipantRole} 
-                      onValueChange={(v) => setNewParticipantRole(v as SpeakerRole)}
+                      value={newFieldType} 
+                      onValueChange={(v) => setNewFieldType(v as FieldType)}
                     >
                       <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select role" />
+                        <SelectValue placeholder="Select type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="assistant">Assistant</SelectItem>
-                        <SelectItem value="participant">Participant</SelectItem>
-                        <SelectItem value="moderator">Moderator</SelectItem>
+                        <SelectItem value="self">Self</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="collective">Collective</SelectItem>
                         <SelectItem value="system">System</SelectItem>
+                        <SelectItem value="field_a">Field A</SelectItem>
+                        <SelectItem value="field_b">Field B</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={handleCreateParticipant}>Add Participant</Button>
+                  <Button onClick={handleCreateField}>Define Field</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            <div className="h-4 w-[1px] bg-border mx-2" />
+            
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="reconstruction-mode" 
+                checked={isReconstruction}
+                onCheckedChange={setIsReconstruction}
+                className="scale-75"
+              />
+              <Label htmlFor="reconstruction-mode" className="text-[10px] text-muted-foreground font-mono uppercase cursor-pointer flex items-center gap-1">
+                <History className="h-3 w-3" />
+                Memory / Reconstruction
+              </Label>
+            </div>
           </div>
           
           <div className="text-[10px] font-mono text-muted-foreground hidden sm:block">
-            EDCM ANALYSIS MODE: ACTIVE
+            FIELD OBSERVATION ACTIVE
           </div>
         </div>
 
         {/* Text Input Area */}
-        <div className="relative">
+        <div className="relative group">
           <Textarea 
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Enter conversation turn..."
+            placeholder="Record field expression..."
             className="min-h-[80px] pr-12 font-mono text-sm bg-background/50 border-border/50 resize-none focus-visible:ring-primary/20"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -164,7 +200,7 @@ export function ConversationInput({
           />
           <Button 
             size="icon" 
-            className="absolute bottom-2 right-2 h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
+            className="absolute bottom-2 right-2 h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground transition-all opacity-80 group-hover:opacity-100"
             onClick={handleSubmit}
             disabled={!text.trim()}
           >
