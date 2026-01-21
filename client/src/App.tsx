@@ -2,14 +2,20 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import Dashboard from "@/pages/Dashboard";
+
+import Home from "@/pages/Home";
+import DatingMode from "@/modes/dating/DatingMode";
+import PoliticalMode from "@/modes/politics/PoliticalMode";
+import LabMode from "@/modes/lab/LabMode";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/live" component={Dashboard} />
+      <Route path="/" component={Home} />
+      <Route path="/dating" component={DatingMode} />
+      <Route path="/politics" component={PoliticalMode} />
+      <Route path="/lab" component={LabMode} />
       <Route component={NotFound} />
     </Switch>
   );
