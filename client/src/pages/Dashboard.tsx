@@ -1,117 +1,223 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { DissonanceCircuit } from "@/components/dashboard/DissonanceCircuit";
-import { MOCK_STATE, MOCK_TRANSCRIPT, AnalysisTurn } from "@/lib/edcm-data";
+import { ConversationInput } from "@/components/dashboard/ConversationInput";
+import { TimelineView } from "@/components/dashboard/TimelineView";
+import { 
+  MOCK_STATE, 
+  INITIAL_TRANSCRIPT, 
+  INITIAL_PARTICIPANTS, 
+  INITIAL_METADATA,
+  AnalysisTurn, 
+  Participant,
+  analyzeTurn,
+  MetricData
+} from "@/lib/edcm-data";
 import { cn } from "@/lib/utils";
-import generatedImage from '@assets/generated_images/abstract_scientific_data_visualization_background.png';
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, User, Users, LineChart } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Dashboard() {
-  const [selectedTurn, setSelectedTurn] = React.useState<string | null>(null);
+  const [turns, setTurns] = useState<AnalysisTurn[]>(INITIAL_TRANSCRIPT);
+  const [participants, setParticipants] = useState<Participant[]>(INITIAL_PARTICIPANTS);
+  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null);
+  
+  // Stats View State
+  const [analysisScope, setAnalysisScope] = useState<"turn" | "speaker" | "meeting">("turn");
+  
+  // Real-time Metrics State (Simulated)
+  const [currentMetrics, setCurrentMetrics] = useState(MOCK_STATE.metrics);
+
+  const handleAddTurn = (text: string, speakerId: string) => {
+    const prevMetrics = turns[turns.length - 1]?.metrics;
+    const newMetrics = analyzeTurn(text, prevMetrics);
+    
+    const newTurn: AnalysisTurn = {
+      id: `turn-${Date.now()}`,
+      timestamp: new Date().toLocaleTimeString([], { hour12: false }),
+      speaker_id: speakerId,
+      text: text,
+      metrics: newMetrics,
+      segment: "Live Discussion" // Simplified for now
+    };
+
+    setTurns(prev => [...prev, newTurn]);
+    setSelectedTurnId(newTurn.id);
+    
+    // Update dashboard metrics (simulating the latest state)
+    // In a real app, this would aggregate. For mock, we show the "Live" metrics of the new turn
+    // mixed with some smoothing logic
+    updateDashboardMetrics(newMetrics);
+  };
+
+  const updateDashboardMetrics = (latest: any) => {
+    // This function just maps the latest turn metrics to the SystemState format
+    // In a real implementation, this would handle the aggregation logic.
+    const updated: any = { ...currentMetrics };
+    
+    Object.keys(latest).forEach((key) => {
+      const k = key as keyof typeof latest;
+      if (updated[k]) {
+        updated[k] = {
+          ...updated[k],
+          value: latest[k],
+          delta: latest[k] - (updated[k].value || 0),
+          // Simple history update
+          history: [...updated[k].history.slice(1), latest[k]]
+        };
+      }
+    });
+    
+    setCurrentMetrics(updated);
+  };
+
+  const handleAddParticipant = (p: Participant) => {
+    setParticipants(prev => [...prev, p]);
+  };
+
+  // Get selected turn object
+  const selectedTurn = turns.find(t => t.id === selectedTurnId) || turns[turns.length - 1];
 
   return (
     <DashboardLayout>
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 pb-20">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pb-20 h-[calc(100vh-100px)]">
         
-        {/* Top Stats Row */}
-        <div className="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          <MetricCard 
-            code="C" label="Constraint Strain" 
-            value={MOCK_STATE.metrics.C.value} 
-            delta={MOCK_STATE.metrics.C.delta} 
-            data={MOCK_STATE.metrics.C.history}
-            color="warning"
-            description="Accumulated tension from conflicting directives."
-          />
-          <MetricCard 
-            code="F" label="Fixation" 
-            value={MOCK_STATE.metrics.F.value} 
-            delta={MOCK_STATE.metrics.F.delta} 
-            data={MOCK_STATE.metrics.F.history}
-            color="destructive"
-            description="Repetitive output patterns indicating deadlock."
-          />
-          <MetricCard 
-            code="I" label="Integration Fail" 
-            value={MOCK_STATE.metrics.I.value} 
-            delta={MOCK_STATE.metrics.I.delta} 
-            data={MOCK_STATE.metrics.I.history}
-            color="destructive"
-            description="Failure to incorporate corrective feedback."
-          />
-          <MetricCard 
-            code="P" label="Progress" 
-            value={MOCK_STATE.metrics.P.value} 
-            delta={MOCK_STATE.metrics.P.delta} 
-            data={MOCK_STATE.metrics.P.history}
-            color="primary"
-            description="Movement toward resolution of constraints."
-          />
-        </div>
-
-        {/* Main Analysis Column */}
-        <div className="col-span-1 md:col-span-8 space-y-4 md:space-y-6">
-          
-          {/* Transcript Analyzer */}
-          <div className="glass-panel p-0 rounded-sm overflow-hidden flex flex-col h-[400px] md:h-[600px]">
-            <div className="px-4 md:px-6 py-3 md:py-4 border-b border-border bg-card/50 flex justify-between items-center">
-              <h3 className="font-mono font-medium text-xs md:text-sm">LIVE TRANSCRIPT ANALYSIS</h3>
-              <div className="flex gap-2 items-center">
-                <span className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] md:text-xs font-mono text-muted-foreground">RECORDING</span>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-              {MOCK_TRANSCRIPT.map((turn) => (
-                <div 
-                  key={turn.id} 
-                  className={cn(
-                    "relative pl-4 md:pl-6 py-2 transition-all cursor-pointer border-l-2",
-                    selectedTurn === turn.id 
-                      ? "border-primary bg-primary/5" 
-                      : "border-transparent hover:bg-white/5",
-                    turn.role === "user" ? "ml-0 mr-8 md:mr-12" : "ml-8 md:ml-12 mr-0"
-                  )}
-                  onClick={() => setSelectedTurn(turn.id)}
-                >
-                  <div className="flex items-center gap-3 mb-1 opacity-50">
-                    <span className="text-[10px] font-mono uppercase">{turn.role}</span>
-                    <span className="text-[10px] font-mono">{turn.timestamp}</span>
-                    {turn.role === "system" && turn.metrics && (
-                      <div className="flex gap-2 ml-auto">
-                        <span className={cn("text-[10px]", turn.metrics.C > 0.7 ? "text-red-400" : "text-muted-foreground")}>
-                          C:{turn.metrics.C}
-                        </span>
-                         <span className={cn("text-[10px]", turn.metrics.I > 0.7 ? "text-red-400" : "text-muted-foreground")}>
-                          I:{turn.metrics.I}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className={cn(
-                    "text-sm leading-relaxed",
-                    turn.role === "system" ? "text-primary/90 font-mono text-xs" : "text-foreground"
-                  )}>
-                    {turn.content}
-                  </div>
-                </div>
-              ))}
-              
-              <div className="border-t border-dashed border-border mt-6 md:mt-8 pt-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs font-mono animate-pulse">
-                  <span>&gt;</span> Awaiting input...
-                </div>
-              </div>
-            </div>
+        {/* LEFT COLUMN: Timeline & Input */}
+        <div className="lg:col-span-8 flex flex-col gap-4 h-full overflow-hidden">
+          {/* Metadata Bar */}
+          <div className="flex items-center justify-between px-4 py-2 glass-panel rounded-sm shrink-0">
+             <div className="flex flex-col">
+               <span className="text-[10px] uppercase text-muted-foreground font-mono">Session</span>
+               <span className="text-sm font-medium">{INITIAL_METADATA.title}</span>
+             </div>
+             <div className="flex items-center gap-4">
+               <div className="flex -space-x-2">
+                 {participants.map(p => (
+                   <div 
+                    key={p.id} 
+                    className="w-6 h-6 rounded-full border border-background flex items-center justify-center text-[10px] font-bold text-white"
+                    style={{ backgroundColor: p.color }}
+                    title={p.name}
+                   >
+                     {p.name.charAt(0)}
+                   </div>
+                 ))}
+               </div>
+               <div className="h-8 w-[1px] bg-border" />
+               <div className="text-right">
+                 <span className="block text-[10px] uppercase text-muted-foreground font-mono">Turns</span>
+                 <span className="block text-sm font-mono">{turns.length}</span>
+               </div>
+             </div>
           </div>
 
+          <div className="flex-1 min-h-0">
+            <TimelineView 
+              turns={turns}
+              participants={participants}
+              selectedTurnId={selectedTurnId}
+              onSelectTurn={setSelectedTurnId}
+            />
+          </div>
+
+          <div className="shrink-0">
+            <ConversationInput 
+              participants={participants}
+              onAddTurn={handleAddTurn}
+              onAddParticipant={handleAddParticipant}
+            />
+          </div>
         </div>
 
-        {/* Right Column: Circuit & Details */}
-        <div className="col-span-1 md:col-span-4 space-y-4 md:space-y-6">
-          <div className="h-[300px] md:h-[350px]">
+        {/* RIGHT COLUMN: Analysis */}
+        <div className="lg:col-span-4 flex flex-col gap-6 h-full overflow-y-auto pr-2">
+          
+          <Tabs defaultValue="turn" className="w-full" onValueChange={(v) => setAnalysisScope(v as any)}>
+            <TabsList className="w-full grid grid-cols-3 bg-card/50 border border-border/50">
+              <TabsTrigger value="turn" className="text-xs">Turn</TabsTrigger>
+              <TabsTrigger value="speaker" className="text-xs">Speaker</TabsTrigger>
+              <TabsTrigger value="meeting" className="text-xs">Meeting</TabsTrigger>
+            </TabsList>
+            
+            <div className="mt-4 space-y-4">
+              {/* Dynamic Metric Cards based on Scope */}
+              <div className="grid grid-cols-2 gap-3">
+                 <MetricCard 
+                    code="C" label="Strain" 
+                    value={selectedTurn?.metrics?.C || 0} 
+                    delta={0.05}
+                    color="warning"
+                  />
+                  <MetricCard 
+                    code="F" label="Fixation" 
+                    value={selectedTurn?.metrics?.F || 0} 
+                    delta={0.12}
+                    color="destructive"
+                  />
+                  <MetricCard 
+                    code="I" label="Integration" 
+                    value={selectedTurn?.metrics?.I || 0} 
+                    delta={0.02}
+                    color="destructive"
+                  />
+                  <MetricCard 
+                    code="P" label="Progress" 
+                    value={selectedTurn?.metrics?.P || 0} 
+                    delta={-0.05}
+                    color="primary"
+                  />
+              </div>
+
+              {/* Scope-Specific Visualizations */}
+              <TabsContent value="turn" className="mt-0 space-y-4">
+                 <div className="glass-panel p-4 rounded-sm bg-primary/5 border-primary/20">
+                   <h4 className="text-xs font-mono uppercase text-primary mb-2 flex items-center gap-2">
+                     <LineChart className="h-3 w-3" />
+                     Local Dynamics
+                   </h4>
+                   <p className="text-xs text-muted-foreground leading-relaxed">
+                     Turn <strong>{selectedTurnId?.split('-')[1]}</strong> exhibits high <strong>Fixation (0.88)</strong> relative to the previous turn. Speaker is restating position without integrating feedback.
+                   </p>
+                 </div>
+              </TabsContent>
+
+              <TabsContent value="speaker" className="mt-0 space-y-4">
+                <div className="glass-panel p-4 rounded-sm">
+                   <h4 className="text-xs font-mono uppercase text-muted-foreground mb-4 flex items-center gap-2">
+                     <User className="h-3 w-3" />
+                     Speaker Aggregates
+                   </h4>
+                   {/* Placeholder for speaker stats */}
+                   <div className="space-y-3">
+                     {participants.slice(0, 3).map(p => (
+                       <div key={p.id} className="flex items-center justify-between text-xs">
+                         <span className="flex items-center gap-2">
+                           <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
+                           {p.name}
+                         </span>
+                         <span className="font-mono text-muted-foreground">Avg C: 0.45</span>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+              </TabsContent>
+
+              <TabsContent value="meeting" className="mt-0 space-y-4">
+                 <div className="glass-panel p-4 rounded-sm">
+                   <h4 className="text-xs font-mono uppercase text-muted-foreground mb-4 flex items-center gap-2">
+                     <Users className="h-3 w-3" />
+                     Global State
+                   </h4>
+                   <div className="h-32 flex items-center justify-center border border-dashed border-border rounded opacity-50 text-xs">
+                     Aggregate Topology Graph
+                   </div>
+                 </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+
+          <div className="h-[280px] shrink-0">
             <DissonanceCircuit 
               Et={MOCK_STATE.energy.Et} 
               st={MOCK_STATE.energy.st} 
@@ -119,42 +225,16 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Diagnostic Panel */}
-          <div className="glass-panel p-4 md:p-6 rounded-sm">
-            <h3 className="text-xs md:text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">Diagnostic State</h3>
-            
-            <div className="flex items-center gap-4 mb-6">
-              <div className="h-10 w-10 md:h-12 md:w-12 rounded bg-warning/20 flex items-center justify-center border border-warning/50 shrink-0">
-                <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-warning" />
-              </div>
-              <div>
-                <div className="text-base md:text-lg font-bold text-warning tracking-tight">LOAD SATURATION</div>
-                <div className="text-[10px] md:text-xs text-muted-foreground">Threshold crossed at 10:42:49</div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Primary Failure Mode</span>
-                <span className="font-mono text-foreground text-right ml-2">Looping Instability</span>
-              </div>
-               <div className="flex justify-between text-xs border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Risk Level</span>
-                <span className="font-mono text-destructive">HIGH (0.85)</span>
-              </div>
-               <div className="flex justify-between text-xs pb-2">
-                <span className="text-muted-foreground">Recommended Action</span>
-                <span className="font-mono text-primary text-right ml-2">Force Constraint Resolution</span>
-              </div>
-            </div>
+          <div className="glass-panel p-4 rounded-sm border-l-2 border-l-warning">
+             <div className="flex justify-between items-start mb-2">
+               <h4 className="text-xs font-bold text-warning uppercase">Active Failure Mode</h4>
+               <AlertTriangle className="h-4 w-4 text-warning" />
+             </div>
+             <p className="text-xs text-muted-foreground">
+               <strong>Looping Instability</strong> detected across last 3 turns. Convergence probability dropping.
+             </p>
           </div>
 
-          <div className="glass-panel p-4 rounded-sm bg-blue-950/20 border-blue-500/20">
-            <h4 className="text-xs font-bold text-blue-400 mb-2">EDCM Core Insight</h4>
-            <p className="text-xs text-blue-200/70 leading-relaxed">
-              System is exhibiting <strong>Narrative Overclosure</strong>. It is generating confident explanations (High O) while failing to integrate the contradictory constraints (High I, High C). Energy is accumulating rather than resolving.
-            </p>
-          </div>
         </div>
       </div>
     </DashboardLayout>
