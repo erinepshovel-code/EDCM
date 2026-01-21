@@ -49,4 +49,10 @@ export interface AnalysisOptions {
   mode: 'dating' | 'politics' | 'lab';
   contextTags?: string[];
   isMultiParty?: boolean;
+  audioFeatures?: {
+    speechRate: number;
+    pauseDensity: number;
+    volumeVariance: number;
+    pitchVariance: number;
+  };
 }

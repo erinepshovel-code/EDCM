@@ -13,9 +13,12 @@ import { analyzeText } from '@/edcm/engine';
 import { projectDating, DatingProjection } from '@/edcm/projections';
 import { EDCMResult } from '@/edcm/types';
 
+import { AudioFeatures } from '@/audio/types';
+
 export default function DatingMode() {
   const [text, setText] = useState('');
   const [isDraft, setIsDraft] = useState(false);
+  const [audioFeatures, setAudioFeatures] = useState<AudioFeatures | null>(null);
   const [result, setResult] = useState<EDCMResult | null>(null);
   const [projection, setProjection] = useState<DatingProjection | null>(null);
 
@@ -25,10 +28,19 @@ export default function DatingMode() {
       setProjection(null);
       return;
     }
-    const res = analyzeText(text, { mode: 'dating' });
+    // Pass audio features to engine if available
+    const res = analyzeText(text, { 
+      mode: 'dating',
+      audioFeatures: audioFeatures ? {
+        speechRate: audioFeatures.speechRate,
+        pauseDensity: audioFeatures.pauseDensity,
+        volumeVariance: audioFeatures.volumeVariance,
+        pitchVariance: audioFeatures.pitchVariance
+      } : undefined
+    });
     setResult(res);
     setProjection(projectDating(res));
-  }, [text]);
+  }, [text, audioFeatures]);
 
   // Derived Safety Signal (internal logic for UI state)
   const safetySignalDetected = result ? (result.metrics.E > 0.6 || result.metrics.R > 0.5) : false;
@@ -40,7 +52,7 @@ export default function DatingMode() {
       interpretation: proj.pace === 'Skewed' 
         ? "One party is driving urgency while the other resists or delays. High friction potential." 
         : proj.pace === 'Rising' 
-        ? "Intensity is increasing. Check if both parties are comfortable with this speed." 
+        ? `Intensity is increasing${audioFeatures ? ' (audibly accelerated)' : ''}. Check if both parties are comfortable with this speed.` 
         : "Cadence is stable and predictable. Low risk of sudden escalation.",
       nextStep: proj.pace === 'Skewed' ? "Pause. Do not match the urgency." : "Maintain current rhythm.",
       variant: proj.pace === 'Skewed' ? 'critical' : proj.pace === 'Rising' ? 'warning' : 'neutral'
@@ -103,7 +115,8 @@ export default function DatingMode() {
           
           <LargeTextInput 
             value={text} 
-            onChange={setText} 
+            onChange={setText}
+            onAudioAnalysis={setAudioFeatures}
             placeholder={isDraft ? "Draft your message here to check for unintended intensity..." : "Paste conversation history here..."}
             label="Interaction Data"
           />

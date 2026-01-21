@@ -18,9 +18,20 @@ export function analyzeText(text: string, options: AnalysisOptions): EDCMResult 
   
   // Base metrics based on text length and some keyword heuristics
   const lengthScore = Math.min(1, text.length / 500);
-  const urgency = /asap|now|urgent|immediately|need/i.test(text) ? 0.8 : 0.2;
-  const refusal = /no|cannot|won't|stop|don't/i.test(text) ? 0.6 : 0.1;
+  let urgency = /asap|now|urgent|immediately|need/i.test(text) ? 0.8 : 0.2;
+  let refusal = /no|cannot|won't|stop|don't/i.test(text) ? 0.6 : 0.1;
   const confusion = /what|huh|mean|clarify/i.test(text) ? 0.5 : 0.1;
+
+  // Audio modifiers
+  if (options.audioFeatures) {
+    const { speechRate, pauseDensity, volumeVariance } = options.audioFeatures;
+    // Fast speech (>150wpm) increases urgency and escalation
+    if (speechRate > 150) urgency += 0.3;
+    // Low pauses (<0.2) increases pressure/escalation
+    if (pauseDensity < 0.2) urgency += 0.2;
+    // High volume variance suggests emotional volatility (mapped to Escalation/Noise)
+    if (volumeVariance > 0.6) refusal += 0.1;
+  }
 
   // Generate deterministic noise
   const r = (min: number, max: number) => min + rng() * (max - min);
@@ -34,7 +45,7 @@ export function analyzeText(text: string, options: AnalysisOptions): EDCMResult 
       L: r(0, 0.3) + (confusion * 0.5),
       O: r(0.3, 0.8),
       F: r(0, 0.4),
-      E: r(0, 0.3) + urgency,
+      E: r(0, 0.3) + urgency, // Audio urgency directly impacts E
       I: r(0, 0.2)
     },
     modifiers: {

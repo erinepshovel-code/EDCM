@@ -11,9 +11,12 @@ import { analyzeText } from '@/edcm/engine';
 import { EDCMResult } from '@/edcm/types';
 import { DissonanceCircuit } from '@/components/dashboard/DissonanceCircuit'; // Reuse from previous task
 
+import { AudioFeatures } from '@/audio/types';
+
 export default function LabMode() {
   const [text, setText] = useState('');
   const [result, setResult] = useState<EDCMResult | null>(null);
+  const [audioFeatures, setAudioFeatures] = useState<AudioFeatures | null>(null);
   const [showRawMetrics, setShowRawMetrics] = useState(false);
 
   // Analyze chunk-by-chunk to create time-series data
@@ -38,7 +41,15 @@ export default function LabMode() {
     });
     
     setTimeSeriesData(series);
-    setResult(analyzeText(text, { mode: 'lab' })); // Aggregate result
+    setResult(analyzeText(text, { 
+      mode: 'lab',
+      audioFeatures: audioFeatures ? {
+        speechRate: audioFeatures.speechRate,
+        pauseDensity: audioFeatures.pauseDensity,
+        volumeVariance: audioFeatures.volumeVariance,
+        pitchVariance: audioFeatures.pitchVariance
+      } : undefined
+    })); // Aggregate result
   };
 
   return (
@@ -54,7 +65,8 @@ export default function LabMode() {
         <section className="space-y-4">
            <LargeTextInput 
             value={text} 
-            onChange={setText} 
+            onChange={setText}
+            onAudioAnalysis={setAudioFeatures}
             placeholder="Input raw field interaction logs..."
             label="Field Data Input"
           />
@@ -163,6 +175,9 @@ export default function LabMode() {
               {/* Methods Drawer Stub */}
               <div className="text-[10px] text-muted-foreground leading-relaxed pt-2">
                 <p><strong>Methodology:</strong> EDCM dimensionality reduction maps textual signals to a 9-dimensional latent state-space. Coherence (L) and Integration (I) are derived secondary vectors.</p>
+                {audioFeatures && (
+                  <p className="mt-2 text-primary/80"><strong>Auditory Signal:</strong> Structural features (Rate: {audioFeatures.speechRate}wpm, Pause: {audioFeatures.pauseDensity.toFixed(2)}) incorporated as modifiers.</p>
+                )}
               </div>
 
             </div>

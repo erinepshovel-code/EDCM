@@ -11,8 +11,11 @@ import { analyzeText } from '@/edcm/engine';
 import { projectPolitical, PoliticalProjection } from '@/edcm/projections';
 import { EDCMResult } from '@/edcm/types';
 
+import { AudioFeatures } from '@/audio/types';
+
 export default function PoliticalMode() {
   const [text, setText] = useState('');
+  const [audioFeatures, setAudioFeatures] = useState<AudioFeatures | null>(null);
   const [result, setResult] = useState<EDCMResult | null>(null);
   const [projection, setProjection] = useState<PoliticalProjection | null>(null);
 
@@ -22,10 +25,18 @@ export default function PoliticalMode() {
       setProjection(null);
       return;
     }
-    const res = analyzeText(text, { mode: 'politics' });
+    const res = analyzeText(text, { 
+      mode: 'politics',
+      audioFeatures: audioFeatures ? {
+        speechRate: audioFeatures.speechRate,
+        pauseDensity: audioFeatures.pauseDensity,
+        volumeVariance: audioFeatures.volumeVariance,
+        pitchVariance: audioFeatures.pitchVariance
+      } : undefined
+    });
     setResult(res);
     setProjection(projectPolitical(res));
-  }, [text]);
+  }, [text, audioFeatures]);
 
   const getCards = (proj: PoliticalProjection): ProjectionCardData[] => [
     {
@@ -90,7 +101,8 @@ export default function PoliticalMode() {
           
           <LargeTextInput 
             value={text} 
-            onChange={setText} 
+            onChange={setText}
+            onAudioAnalysis={setAudioFeatures}
             placeholder="Paste speech, debate transcript, or op-ed here..."
             label="Discourse Data"
           />
