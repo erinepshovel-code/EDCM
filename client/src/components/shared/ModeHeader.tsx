@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'wouter';
-import { Database, Cloud, Home, LogIn, LogOut, User } from 'lucide-react';
+import { Database, Cloud, Home, LogIn, LogOut, User, Github } from 'lucide-react';
 import { useAuthStore } from '@/auth/subscription';
 import { Button } from '@/components/ui/button';
 import { AuthDialog } from './AuthDialog';
+import { GitHubPanel } from './GitHubPanel';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ interface ModeHeaderProps {
 export function ModeHeader({ title, subtitle }: ModeHeaderProps) {
   const { user, isSubscribed, syncEnabled, logout } = useAuthStore();
   const [authOpen, setAuthOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
 
   return (
     <>
@@ -61,6 +63,10 @@ export function ModeHeader({ title, subtitle }: ModeHeaderProps) {
               )}
             </div>
 
+            <Button variant="ghost" size="icon" onClick={() => setGithubOpen(true)} title="GitHub">
+              <Github className="h-5 w-5" />
+            </Button>
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -96,6 +102,7 @@ export function ModeHeader({ title, subtitle }: ModeHeaderProps) {
       </header>
 
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <GitHubPanel open={githubOpen} onOpenChange={setGithubOpen} />
     </>
   );
 }
