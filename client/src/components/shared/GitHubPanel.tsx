@@ -99,11 +99,11 @@ export function GitHubPanel({ open, onOpenChange }: GitHubPanelProps) {
   });
 
   const pushMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (force: boolean = false) => {
       const res = await fetch('/api/github/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ branch: status?.git?.currentBranch || 'main' }),
+        body: JSON.stringify({ branch: status?.git?.currentBranch || 'main', force }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
       return res.json();
@@ -299,15 +299,28 @@ export function GitHubPanel({ open, onOpenChange }: GitHubPanelProps) {
                       className="flex-1"
                     >
                       {commitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Commit Changes
+                      Commit
                     </Button>
                     <Button 
-                      onClick={() => pushMutation.mutate()}
+                      onClick={() => pushMutation.mutate(false)}
                       disabled={pushMutation.isPending}
                       className="flex-1"
                     >
                       {pushMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                      Push to GitHub
+                      Push
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        if (confirm('Force push will overwrite the remote. This cannot be undone. Continue?')) {
+                          pushMutation.mutate(true);
+                        }
+                      }}
+                      disabled={pushMutation.isPending}
+                      variant="destructive"
+                      size="sm"
+                      title="Force push (overwrites remote)"
+                    >
+                      Force
                     </Button>
                   </div>
 

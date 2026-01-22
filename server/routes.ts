@@ -238,6 +238,13 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Commit message required" });
       }
 
+      // Get GitHub user for commit identity
+      const user = await getGitHubUser();
+      
+      // Configure git user identity
+      await execAsync(`git config user.email "${user.email || user.login + '@users.noreply.github.com'}"`, { cwd: process.cwd() });
+      await execAsync(`git config user.name "${user.name || user.login}"`, { cwd: process.cwd() });
+
       // Stage all changes
       await execAsync("git add -A", { cwd: process.cwd() });
       
@@ -255,7 +262,7 @@ export async function registerRoutes(
 
   app.post("/api/github/push", async (req, res) => {
     try {
-      const { branch = "main" } = req.body;
+      const { branch = "main", force = false } = req.body;
       
       // Get access token for push
       const octokit = await getGitHubClient();
@@ -304,7 +311,8 @@ export async function registerRoutes(
       await execAsync(`git remote set-url origin "${authenticatedUrl}"`, { cwd: process.cwd() });
       
       try {
-        const { stdout, stderr } = await execAsync(`git push -u origin ${branch}`, { cwd: process.cwd() });
+        const forceFlag = force ? " --force" : "";
+        const { stdout, stderr } = await execAsync(`git push -u origin ${branch}${forceFlag}`, { cwd: process.cwd() });
         res.json({ success: true, output: stdout || stderr || "Push successful" });
       } finally {
         // Restore non-authenticated URL
