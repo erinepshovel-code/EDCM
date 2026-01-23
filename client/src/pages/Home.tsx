@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'wouter';
 import { ModeHeader } from '@/components/shared/ModeHeader';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageSquare, Microscope, ArrowRight, ShieldCheck, Database, Bot } from 'lucide-react';
+import { Heart, MessageSquare, Microscope, ArrowRight, ShieldCheck, Database, Bot, BarChart3 } from 'lucide-react';
 import { HmmmContainer } from '@/components/shared/HmmmContainer';
 
 export default function Home() {
@@ -99,6 +99,25 @@ export default function Home() {
               </p>
               <div className="flex items-center text-sm font-medium text-primary">
                 Start Chat <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </div>
+          </Link>
+
+          {/* EDCM Analysis Card */}
+          <Link href="/analysis">
+            <div className="group relative overflow-hidden rounded-lg border border-border bg-card p-6 hover:border-primary/50 transition-all hover:shadow-lg cursor-pointer h-full flex flex-col">
+              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <BarChart3 className="w-24 h-24" />
+              </div>
+              <div className="mb-4 p-3 bg-orange-500/10 w-fit rounded-lg">
+                <BarChart3 className="w-6 h-6 text-orange-400" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">EDCM Analysis</h3>
+              <p className="text-sm text-muted-foreground mb-6 flex-1">
+                AI-assisted conversation analysis. Ingest text, run structural analysis, interpret patterns, and generate reports.
+              </p>
+              <div className="flex items-center text-sm font-medium text-primary">
+                Analyze <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           </Link>

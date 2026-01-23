@@ -95,3 +95,25 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type AudioArtifact = typeof audioArtifacts.$inferSelect;
 export type InsertAudioArtifact = z.infer<typeof insertAudioArtifactSchema>;
+
+export const analysisArtifacts = pgTable("analysis_artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  source: text("source").notNull().default("paste"),
+  conversationTurns: jsonb("conversation_turns").default([]),
+  rawText: text("raw_text"),
+  features: jsonb("features"),
+  qualityFlags: text("quality_flags").array().default([]),
+  hmmItems: jsonb("hmm_items").default([]),
+  edcmResult: jsonb("edcm_result"),
+  analysisComplete: boolean("analysis_complete").default(false),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const insertAnalysisArtifactSchema = createInsertSchema(analysisArtifacts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AnalysisArtifact = typeof analysisArtifacts.$inferSelect;
+export type InsertAnalysisArtifact = z.infer<typeof insertAnalysisArtifactSchema>;

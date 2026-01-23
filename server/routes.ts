@@ -1,13 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, insertSessionSchema } from "@shared/schema";
+import { insertUserSchema, insertSessionSchema, insertAnalysisArtifactSchema } from "@shared/schema";
 import { z } from "zod";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { getGitHubUser, listUserRepos, createRepo, getRepo, getGitHubClient } from "./github";
 import multer from "multer";
 import { registerChatRoutes } from "./replit_integrations/chat";
+import { processAssistantRequest, parseTextToTurns } from "./edcm-assistant";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -433,6 +434,145 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Stream stop error:", error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =================== EDCM ASSISTANT API ===================
+
+  app.post("/api/edcm-assistant/parse", async (req, res) => {
+    try {
+      const schema = z.object({ text: z.string().min(1) });
+      const { text } = schema.parse(req.body);
+      const result = parseTextToTurns(text);
+      res.json(result);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/edcm-assistant/artifacts", async (req, res) => {
+    try {
+      const data = insertAnalysisArtifactSchema.parse(req.body);
+      const artifact = await storage.createAnalysisArtifact(data);
+      res.status(201).json(artifact);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/edcm-assistant/artifacts", async (req, res) => {
+    try {
+      const artifacts = await storage.getAllAnalysisArtifacts();
+      res.json(artifacts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/edcm-assistant/artifacts/:id", async (req, res) => {
+    try {
+      const artifact = await storage.getAnalysisArtifact(req.params.id);
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      res.json(artifact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/edcm-assistant/artifacts/:id", async (req, res) => {
+    try {
+      const artifact = await storage.updateAnalysisArtifact(req.params.id, req.body);
+      if (!artifact) {
+        return res.status(404).json({ error: "Artifact not found" });
+      }
+      res.json(artifact);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/edcm-assistant/artifacts/:id", async (req, res) => {
+    try {
+      await storage.deleteAnalysisArtifact(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/edcm-assistant/process", async (req, res) => {
+    try {
+      const schema = z.object({
+        mode: z.enum(["ingest", "analyze", "interpret", "compare", "report"]),
+        message: z.string().min(1),
+        artifact_id: z.string().optional(),
+        compare_artifact_id: z.string().optional(),
+        conversation_history: z.array(z.object({
+          role: z.enum(["user", "assistant"]),
+          content: z.string(),
+        })).optional(),
+      });
+      
+      const { mode, message, artifact_id, compare_artifact_id, conversation_history } = schema.parse(req.body);
+
+      const artifact = artifact_id ? await storage.getAnalysisArtifact(artifact_id) : undefined;
+      const compareArtifact = compare_artifact_id ? await storage.getAnalysisArtifact(compare_artifact_id) : undefined;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      res.write(`data: ${JSON.stringify({ type: "start", mode })}\n\n`);
+
+      try {
+        const result = await processAssistantRequest(
+          mode,
+          message,
+          artifact as any,
+          compareArtifact as any,
+          conversation_history || []
+        );
+
+        if (result.structuredOutput) {
+          res.write(`data: ${JSON.stringify({ type: "structured", data: result.structuredOutput })}\n\n`);
+          
+          if (artifact_id && result.structuredOutput.conversation_turns?.length) {
+            await storage.updateAnalysisArtifact(artifact_id, {
+              conversationTurns: result.structuredOutput.conversation_turns,
+              qualityFlags: result.structuredOutput.quality_flags || [],
+              hmmItems: [
+                ...((artifact?.hmmItems as any[]) || []),
+                ...(result.structuredOutput.hmm_items || []),
+              ],
+              edcmResult: result.structuredOutput.edcm_result || undefined,
+              analysisComplete: !!result.structuredOutput.edcm_result,
+            });
+          }
+        }
+
+        res.write(`data: ${JSON.stringify({ type: "content", content: result.structuredOutput?.explanation || result.content })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+      } catch (error: any) {
+        res.write(`data: ${JSON.stringify({ type: "error", error: error.message })}\n\n`);
+      }
+      
+      res.end();
+    } catch (error: any) {
+      console.error("EDCM Assistant error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      if (!res.headersSent) {
+        res.status(500).json({ error: error.message });
+      }
     }
   });
 
