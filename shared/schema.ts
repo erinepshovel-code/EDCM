@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, serial, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,3 +40,58 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
+
+// Chat/Voice Conversations (for OpenAI integration)
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+export const messages = pgTable("messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+});
+
+// Audio Discernment Artifacts
+export const audioArtifacts = pgTable("audio_artifacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  audioFormat: text("audio_format"),
+  durationMs: integer("duration_ms"),
+  audioStored: text("audio_stored").default("none"), // "none" | "local" | "server"
+  transcriptFull: text("transcript_full"),
+  segments: jsonb("segments"), // Array of segments
+  conversationTurns: jsonb("conversation_turns"), // Array of turns
+  qualityFlags: text("quality_flags").array(),
+  hmm: boolean("hmm").default(false),
+  hmmDetails: jsonb("hmm_details"),
+  edcmInputReady: boolean("edcm_input_ready").default(false),
+  edcmResults: jsonb("edcm_results"),
+});
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertMessageSchema = createInsertSchema(messages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAudioArtifactSchema = createInsertSchema(audioArtifacts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Message = typeof messages.$inferSelect;
+export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type AudioArtifact = typeof audioArtifacts.$inferSelect;
+export type InsertAudioArtifact = z.infer<typeof insertAudioArtifactSchema>;

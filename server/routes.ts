@@ -350,64 +350,85 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No audio file provided" });
       }
 
-      // STUB: In production, send buffer to a real transcription service
-      // For now, generate mock EDCM-compatible analysis
-      const audioBuffer = file.buffer;
-      const durationEstimate = audioBuffer.length / 16000; // rough estimate
+      const { processAudioDiscernment } = await import("./audio-discernment");
       
-      // Mock transcript based on audio length
-      const mockTranscripts = [
-        "Let me explain this to you again. We need to move faster.",
-        "I understand your concern but the timeline is fixed.",
-        "Can you just do what I asked? This is not complicated.",
-      ];
-      
-      const segmentCount = Math.min(Math.max(1, Math.floor(durationEstimate / 3)), 5);
-      const segments = [];
-      let currentTime = 0;
-      
-      for (let i = 0; i < segmentCount; i++) {
-        const segmentDuration = (durationEstimate / segmentCount) * 1000;
-        segments.push({
-          start_ms: Math.round(currentTime),
-          end_ms: Math.round(currentTime + segmentDuration),
-          speaker_id: i % 2 === 0 ? "Speaker A" : "Speaker B",
-          text: mockTranscripts[i % mockTranscripts.length],
-          confidence: 0.75 + Math.random() * 0.2,
-        });
-        currentTime += segmentDuration;
-      }
-
-      // Paralinguistic features (structural only - no emotion detection)
-      const features = {
-        speech_rate_wpm: 120 + Math.floor(Math.random() * 60),
-        pause_density: Math.random() * 0.5,
-        volume_variance: Math.random() * 0.8,
-        turn_taking_balance: Math.random(),
-        avg_turn_duration_ms: 2000 + Math.floor(Math.random() * 3000),
+      const options = {
+        diarize: req.body.diarize !== "false",
+        language: req.body.language || "en",
+        model: (req.body.model || "accurate") as "fast" | "accurate",
       };
 
-      // Quality flags for governance
-      const qualityFlags = [];
-      if (features.pause_density < 0.1) qualityFlags.push("low_pause_density");
-      if (features.speech_rate_wpm > 160) qualityFlags.push("rapid_speech");
-      if (features.turn_taking_balance < 0.3 || features.turn_taking_balance > 0.7) {
-        qualityFlags.push("imbalanced_turns");
-      }
-
-      const response = {
-        transcript_full: segments.map(s => s.text).join(" "),
-        segments,
-        features,
-        quality_flags: qualityFlags,
-        duration_ms: Math.round(durationEstimate * 1000),
-        processed_at: new Date().toISOString(),
-      };
-
-      res.json(response);
+      const result = await processAudioDiscernment(file.buffer, options);
+      res.json(result);
     } catch (error: any) {
       console.error("Audio discernment error:", error);
-      res.status(500).json({ error: "Audio analysis failed" });
+      res.status(500).json({ error: "Audio analysis failed", details: error.message });
+    }
+  });
+
+  // Streaming endpoints for live mode
+  const streamSessions = new Map<string, { chunks: Buffer[]; startTime: number }>();
+
+  app.post("/api/audio/stream/start", (req, res) => {
+    const sessionId = `stream-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    streamSessions.set(sessionId, { chunks: [], startTime: Date.now() });
+    res.json({ session_id: sessionId, status: "started" });
+  });
+
+  app.post("/api/audio/stream/chunk", upload.single("chunk"), async (req, res) => {
+    try {
+      const { session_id } = req.body;
+      const chunk = req.file;
+
+      if (!session_id || !streamSessions.has(session_id)) {
+        return res.status(400).json({ error: "Invalid session" });
+      }
+
+      if (!chunk) {
+        return res.status(400).json({ error: "No audio chunk provided" });
+      }
+
+      const session = streamSessions.get(session_id)!;
+      session.chunks.push(chunk.buffer);
+
+      // Return partial analysis hint (VAD simulation)
+      const chunkDuration = chunk.buffer.length / 16000;
+      const speechDetected = chunk.buffer.length > 1000;
+
+      res.json({
+        type: "chunk_received",
+        chunks_count: session.chunks.length,
+        speech_detected: speechDetected,
+        duration_estimate_ms: Math.round(chunkDuration * 1000),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/audio/stream/stop", async (req, res) => {
+    try {
+      const { session_id } = req.body;
+
+      if (!session_id || !streamSessions.has(session_id)) {
+        return res.status(400).json({ error: "Invalid session" });
+      }
+
+      const session = streamSessions.get(session_id)!;
+      streamSessions.delete(session_id);
+
+      if (session.chunks.length === 0) {
+        return res.json({ error: "No audio recorded", hmm: true });
+      }
+
+      const combinedBuffer = Buffer.concat(session.chunks);
+      const { processAudioDiscernment } = await import("./audio-discernment");
+      const result = await processAudioDiscernment(combinedBuffer, { diarize: true });
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Stream stop error:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
