@@ -8,6 +8,7 @@ import Home from "@/pages/Home";
 import DatingMode from "@/modes/dating/DatingMode";
 import PoliticalMode from "@/modes/politics/PoliticalMode";
 import LabMode from "@/modes/lab/LabMode";
+import AIAssistant from "@/pages/AIAssistant";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/dating" component={DatingMode} />
       <Route path="/politics" component={PoliticalMode} />
       <Route path="/lab" component={LabMode} />
+      <Route path="/assistant" component={AIAssistant} />
       <Route component={NotFound} />
     </Switch>
   );

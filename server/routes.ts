@@ -7,6 +7,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { getGitHubUser, listUserRepos, createRepo, getRepo, getGitHubClient } from "./github";
 import multer from "multer";
+import { registerChatRoutes } from "./replit_integrations/chat";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -16,6 +17,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // Register AI Chat routes
+  registerChatRoutes(app);
   
   // =================== AUTH ROUTES (STUB) ===================
   // Minimal auth implementation - real auth would use bcrypt + JWT
