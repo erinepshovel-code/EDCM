@@ -6,6 +6,9 @@ import { z } from "zod";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { getGitHubUser, listUserRepos, createRepo, getRepo, getGitHubClient } from "./github";
+import multer from "multer";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const execAsync = promisify(exec);
 
@@ -335,6 +338,76 @@ export async function registerRoutes(
       res.json({ changes });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =================== AUDIO DISCERNMENT API ===================
+  
+  app.post("/api/audio/discern", upload.single("audio"), async (req, res) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+
+      // STUB: In production, send buffer to a real transcription service
+      // For now, generate mock EDCM-compatible analysis
+      const audioBuffer = file.buffer;
+      const durationEstimate = audioBuffer.length / 16000; // rough estimate
+      
+      // Mock transcript based on audio length
+      const mockTranscripts = [
+        "Let me explain this to you again. We need to move faster.",
+        "I understand your concern but the timeline is fixed.",
+        "Can you just do what I asked? This is not complicated.",
+      ];
+      
+      const segmentCount = Math.min(Math.max(1, Math.floor(durationEstimate / 3)), 5);
+      const segments = [];
+      let currentTime = 0;
+      
+      for (let i = 0; i < segmentCount; i++) {
+        const segmentDuration = (durationEstimate / segmentCount) * 1000;
+        segments.push({
+          start_ms: Math.round(currentTime),
+          end_ms: Math.round(currentTime + segmentDuration),
+          speaker_id: i % 2 === 0 ? "Speaker A" : "Speaker B",
+          text: mockTranscripts[i % mockTranscripts.length],
+          confidence: 0.75 + Math.random() * 0.2,
+        });
+        currentTime += segmentDuration;
+      }
+
+      // Paralinguistic features (structural only - no emotion detection)
+      const features = {
+        speech_rate_wpm: 120 + Math.floor(Math.random() * 60),
+        pause_density: Math.random() * 0.5,
+        volume_variance: Math.random() * 0.8,
+        turn_taking_balance: Math.random(),
+        avg_turn_duration_ms: 2000 + Math.floor(Math.random() * 3000),
+      };
+
+      // Quality flags for governance
+      const qualityFlags = [];
+      if (features.pause_density < 0.1) qualityFlags.push("low_pause_density");
+      if (features.speech_rate_wpm > 160) qualityFlags.push("rapid_speech");
+      if (features.turn_taking_balance < 0.3 || features.turn_taking_balance > 0.7) {
+        qualityFlags.push("imbalanced_turns");
+      }
+
+      const response = {
+        transcript_full: segments.map(s => s.text).join(" "),
+        segments,
+        features,
+        quality_flags: qualityFlags,
+        duration_ms: Math.round(durationEstimate * 1000),
+        processed_at: new Date().toISOString(),
+      };
+
+      res.json(response);
+    } catch (error: any) {
+      console.error("Audio discernment error:", error);
+      res.status(500).json({ error: "Audio analysis failed" });
     }
   });
 
