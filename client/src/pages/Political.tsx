@@ -11,6 +11,7 @@ import {
   Search, Play, AlertTriangle, TrendingUp, TrendingDown,
   FileText, BarChart3, Scale, MessageSquare
 } from 'lucide-react';
+import { analyzeEDCM } from '@/edcm/engine';
 import type { EDCMResult } from '../../../shared/edcm-types';
 
 interface PoliticalFigure {
@@ -41,17 +42,12 @@ export default function Political() {
     
     setIsAnalyzing(true);
     try {
-      const res = await fetch('/api/edcm/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'political',
-          text: pasteText,
-          enable_analysis: true,
-        }),
+      const result = await analyzeEDCM({
+        mode: 'political',
+        text: pasteText,
+        enable_analysis: true,
       });
-      const data = await res.json();
-      setAnalysisResult(data);
+      setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis failed:', err);
     } finally {

@@ -7,7 +7,7 @@ export type ConsentLevel = "implicit" | "explicit" | "none";
 export type TierLevel = "free" | "paid_basic" | "paid_pro";
 
 export interface CanonicalMessage {
-  speaker: "A" | "B" | "C" | "unknown";
+  speaker: "A" | "B" | "C" | "Unknown";
   timestamp: string;
   content: string;
   source_tier: SourceTier;
@@ -65,11 +65,11 @@ export function toCanonicalConversation(params: {
   const participants = Array.from(new Set(params.messages.map(m => m.speaker)));
   
   const canonicalMessages: CanonicalMessage[] = params.messages.map((m, idx) => ({
-    speaker: (m.speaker as "A" | "B" | "C" | "unknown") || "unknown",
+    speaker: (m.speaker as "A" | "B" | "C" | "Unknown") || "Unknown",
     timestamp: m.timestamp || now,
     content: m.text,
     source_tier: params.source,
-    confidence: m.speaker === "unknown" ? 0.5 : 0.9,
+    confidence: m.speaker.toLowerCase() === "unknown" ? 0.5 : 0.9,
   }));
 
   const timestamps = canonicalMessages.map(m => m.timestamp).sort();

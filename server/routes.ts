@@ -10,6 +10,7 @@ import multer from "multer";
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { processAssistantRequest, parseTextToTurns, analyzeEDCM } from "./edcm-assistant";
 import type { AnalyticsIn } from "@shared/edcm-types";
+import { toCanonicalConversation } from "@shared/canonical-schema";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -443,7 +444,22 @@ export async function registerRoutes(
   app.post("/api/edcm/analyze", async (req, res) => {
     try {
       const result = await analyzeEDCM(req.body);
-      res.json(result);
+      
+      const canonical = toCanonicalConversation({
+        messages: result.conversation_turns.map(t => ({
+          speaker: t.speaker,
+          text: t.text,
+        })),
+        source: "paste",
+        domain: req.body.mode === "political" ? "political" : "relationship",
+        tier: "free",
+        consent: "explicit",
+      });
+      
+      res.json({
+        ...result,
+        canonical,
+      });
     } catch (err: any) {
       res.status(500).json({
         error: "EDCM_ANALYZE_FAILED",
