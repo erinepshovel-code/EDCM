@@ -7,6 +7,14 @@ import type {
   AnalysisArtifact 
 } from "../shared/edcm-assistant-types";
 import type { ConversationTurn } from "../shared/audio-types";
+import type {
+  Mode,
+  ConversationTurn as EDCMTurn,
+  EDCMRequestBody,
+  EDCMResult,
+  QualityFlag,
+  HmmItem
+} from "../shared/edcm-types";
 
 const openai = new OpenAI({
   apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
@@ -63,6 +71,141 @@ Your responses MUST be valid JSON matching this structure:
 
 function generateId(): string {
   return `hmm-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function clamp01(x: number) {
+  if (Number.isNaN(x)) return 0;
+  return Math.max(0, Math.min(1, x));
+}
+
+function makeId(prefix = "hmmm") {
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeTurns(body: EDCMRequestBody): EDCMTurn[] {
+  if (Array.isArray(body.turns) && body.turns.length) return body.turns;
+
+  const raw = (body.text ?? "").trim();
+  if (!raw) return [];
+
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  const turns: EDCMTurn[] = [];
+
+  for (const line of lines) {
+    const m = line.match(/^([ABC]):\s*(.+)$/i);
+    if (m) turns.push({ speaker: m[1].toUpperCase() as any, text: m[2] });
+    else turns.push({ speaker: "unknown", text: line });
+  }
+  return turns;
+}
+
+function heuristicMetrics(turns: EDCMTurn[]) {
+  const all = turns.map(t => t.text.toLowerCase()).join(" ");
+  const refusal = (all.match(/\b(cannot|can't|won't|refuse|not allowed|impossible|no way)\b/g) || []).length;
+  const escalation = (all.match(/\b(must|always|never|unacceptable|no choice)\b/g) || []).length;
+  const deflection = (all.match(/\b(anyway|whatever|change the subject|irrelevant|doesn't matter)\b/g) || []).length;
+  const uncertainty = (all.match(/\b(maybe|not sure|i think|possibly|unclear|seems)\b/g) || []).length;
+
+  const R = clamp01(refusal / 10);
+  const E = clamp01(escalation / 16);
+  const D = clamp01(deflection / 8);
+  const N = clamp01(uncertainty / 22);
+  const C = clamp01(R * 0.35 + D * 0.25 + N * 0.25 + E * 0.15);
+
+  return {
+    constraint_strain_C: C,
+    refusal_density_R: R,
+    deflection_D: D,
+    noise_N: N,
+    escalation_E: E,
+    progress_vector: { decisions: 0, commitments: 0, artifacts: 0, followthrough_score: 0 }
+  };
+}
+
+export async function analyzeEDCM(body: EDCMRequestBody): Promise<EDCMResult> {
+  const mode: Mode = body.mode ?? "general";
+  const enable = body.enable_analysis !== false;
+
+  const turns = normalizeTurns(body);
+  const metrics = heuristicMetrics(turns);
+  const quality_flags: QualityFlag[] = [];
+  const hmmm_items: HmmItem[] = [];
+
+  if (!enable) {
+    return {
+      mode,
+      conversation_turns: turns,
+      metrics,
+      quality_flags: ["LOW_CONFIDENCE_PARSE"],
+      hmmm_items: [{
+        id: makeId(),
+        issue: "Analysis disabled; cannot compute EDCM metrics.",
+        evidence: [],
+        suggested_fix: ["Set enable_analysis=true."],
+        severity: "medium",
+        tags: ["ANALYSIS_DISABLED"]
+      }],
+      edcm_summary: "Analysis is disabled. Enable analysis and provide dialogue turns to compute EDCM metrics.",
+      fix_actions: ["Enable analysis", "Provide 6–12 turns", "Use A:/B: speaker tags"],
+      edcm_result: null
+    };
+  }
+
+  if (turns.length === 0) {
+    quality_flags.push("INSUFFICIENT_CONTEXT");
+    hmmm_items.push({
+      id: makeId(),
+      issue: "Missing conversation input.",
+      evidence: [],
+      suggested_fix: [
+        "Provide text or turns[]",
+        "Use one utterance per line with A:/B: speaker tags",
+        "Provide 6–12 turns for stability"
+      ],
+      severity: "high",
+      tags: ["MISSING_INPUT"]
+    });
+  }
+
+  const hasUnknown = turns.some(t => t.speaker === "unknown");
+  if (hasUnknown) {
+    quality_flags.push("MISSING_SPEAKER_TAGS");
+    hmmm_items.push({
+      id: makeId(),
+      issue: "Speaker tags missing or ambiguous; attribution confidence is reduced.",
+      evidence: turns.slice(0, 4).map(t => t.text),
+      suggested_fix: [
+        "Prefix each line with A:, B:, (optional C:)",
+        "Keep one utterance per line",
+        "Include ~10 lines before/after the key moment"
+      ],
+      severity: "medium",
+      tags: ["SPEAKER_TAGS"]
+    });
+  }
+
+  if (turns.length > 0 && turns.length < 3) quality_flags.push("OVER_SHORT_SAMPLE");
+
+  const edcm_summary =
+    turns.length === 0
+      ? "No dialogue provided; EDCM requires conversation turns to measure constraint dynamics."
+      : "EDCM produced instrument-only metrics. Values describe observable pattern measurements (not intent, diagnosis, or truth claims). Increase turn count and add speaker tags for higher-confidence attribution.";
+
+  const fix_actions =
+    turns.length === 0
+      ? ["Paste a conversation excerpt", "Use speaker tags (A:/B:)", "Provide 6–12 turns"]
+      : ["Provide 6–12 turns for stability", "Use consistent speaker tags (A:, B:, C:)", "Include context around any spike (10 lines before/after)"];
+
+  return {
+    mode,
+    conversation_turns: turns,
+    metrics,
+    quality_flags,
+    hmmm_items,
+    edcm_summary,
+    fix_actions,
+    edcm_result: { version: "edcm-app-v0", metrics }
+  };
 }
 
 export async function processAssistantRequest(

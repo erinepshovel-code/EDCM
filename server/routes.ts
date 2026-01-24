@@ -8,7 +8,8 @@ import { promisify } from "util";
 import { getGitHubUser, listUserRepos, createRepo, getRepo, getGitHubClient } from "./github";
 import multer from "multer";
 import { registerChatRoutes } from "./replit_integrations/chat";
-import { processAssistantRequest, parseTextToTurns } from "./edcm-assistant";
+import { processAssistantRequest, parseTextToTurns, analyzeEDCM } from "./edcm-assistant";
+import type { AnalyticsIn } from "@shared/edcm-types";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -434,6 +435,46 @@ export async function registerRoutes(
     } catch (error: any) {
       console.error("Stream stop error:", error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =================== EDCM CORE API ===================
+
+  app.post("/api/edcm/analyze", async (req, res) => {
+    try {
+      const result = await analyzeEDCM(req.body);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({
+        error: "EDCM_ANALYZE_FAILED",
+        message: String(err?.message ?? err)
+      });
+    }
+  });
+
+  // =================== ANALYTICS COLLECTOR (privacy-guarded) ===================
+
+  app.post("/api/analytics/collect", async (req, res) => {
+    try {
+      const body = req.body as AnalyticsIn;
+
+      if (body.sync_mode === "off") {
+        return res.status(400).json({ ok: false, error: "SYNC_DISABLED" });
+      }
+
+      const hasText = typeof body.event.raw_text === "string" && body.event.raw_text.length > 0;
+
+      if (hasText && !body.allow_text_upload) {
+        return res.status(400).json({ ok: false, error: "TEXT_UPLOAD_NOT_ALLOWED" });
+      }
+
+      if (body.sync_mode === "metrics_only" && hasText) {
+        return res.status(400).json({ ok: false, error: "METRICS_ONLY_REJECTS_TEXT" });
+      }
+
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ ok: false, error: String(err?.message ?? err) });
     }
   });
 
