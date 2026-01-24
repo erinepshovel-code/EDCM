@@ -25,6 +25,11 @@ The platform analyzes text and audio inputs for interaction dynamics (pace, pres
 - Added Trends page with SVG sparkline charts
 - Updated AI Assistant description with accurate capabilities
 - Added tutorial button for onboarding
+- **News Ingest Module**: Primary/secondary source classification with distortion scoring
+  - Quote extraction with speaker attribution
+  - Editorial marker detection
+  - Headline spin analysis
+  - Distortion score (higher = more distortion)
 
 ## Key Features
 
@@ -89,6 +94,7 @@ shared/
 - `POST /api/edcm-assistant/parse` - Parse text to turns
 - `POST /api/edcm-assistant/process` - AI assistant streaming
 - `GET/POST /api/edcm-assistant/artifacts` - Artifact CRUD
+- `POST /api/political/analyze-news` - News distortion analysis
 
 ## Ethical Constraints
 - No emotion detection from audio or text
