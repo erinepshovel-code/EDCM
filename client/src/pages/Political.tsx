@@ -16,9 +16,21 @@ import type { EDCMResult } from '../../../shared/edcm-types';
 
 interface PoliticalFigure {
   id: string;
+  bioguideId?: string;
   name: string;
+  party?: string;
+  state?: string;
+  chamber?: string;
   lastAnalysis?: Date;
   consistencyScore?: number;
+}
+
+interface CongressMember {
+  bioguideId: string;
+  name: string;
+  party: string;
+  state: string;
+  chamber: string;
 }
 
 interface RhetoricSample {
@@ -31,27 +43,62 @@ interface RhetoricSample {
 
 export default function Political() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<CongressMember[]>([]);
   const [selectedFigure, setSelectedFigure] = useState<PoliticalFigure | null>(null);
   const [samples, setSamples] = useState<RhetoricSample[]>([]);
   const [pasteText, setPasteText] = useState('');
   const [analysisResult, setAnalysisResult] = useState<EDCMResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || searchQuery.length < 2) return;
     
     setIsSearching(true);
+    setApiError(null);
+    setSearchResults([]);
     
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/political/search?q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      
+      if (!res.ok) {
+        setApiError(data.hint || data.error);
+        setSelectedFigure({
+          id: crypto.randomUUID(),
+          name: searchQuery.trim(),
+        });
+      } else {
+        setSearchResults(data.members || []);
+        if (data.members?.length === 0) {
+          setSelectedFigure({
+            id: crypto.randomUUID(),
+            name: searchQuery.trim(),
+          });
+        }
+      }
+    } catch (err) {
       setSelectedFigure({
         id: crypto.randomUUID(),
         name: searchQuery.trim(),
-        lastAnalysis: undefined,
-        consistencyScore: undefined,
       });
+    } finally {
       setIsSearching(false);
-    }, 500);
+    }
+  };
+
+  const selectMember = (member: CongressMember) => {
+    setSelectedFigure({
+      id: member.bioguideId,
+      bioguideId: member.bioguideId,
+      name: member.name,
+      party: member.party,
+      state: member.state,
+      chamber: member.chamber,
+    });
+    setSearchResults([]);
+    setSearchQuery('');
   };
 
   const handleAnalyze = async () => {
@@ -114,12 +161,44 @@ export default function Political() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Free tier: Paste statements below for analysis. Automatic fetch coming soon.
+                  Search U.S. Congress members or paste any political figure's statements.
                 </p>
 
+                {apiError && (
+                  <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-600">
+                    {apiError}
+                  </div>
+                )}
+
+                {searchResults.length > 0 && (
+                  <div className="mt-2 border rounded-lg overflow-hidden">
+                    {searchResults.map(member => (
+                      <button
+                        key={member.bioguideId}
+                        onClick={() => selectMember(member)}
+                        className="w-full p-2 text-left hover:bg-accent text-xs border-b last:border-b-0 flex items-center justify-between"
+                        data-testid={`member-${member.bioguideId}`}
+                      >
+                        <span className="font-medium">{member.name}</span>
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px]">{member.party}</Badge>
+                          <span>{member.state}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {selectedFigure && (
-                  <div className="mt-4 p-3 border rounded-lg">
+                  <div className="mt-4 p-3 border rounded-lg bg-accent/30">
                     <div className="font-medium">{selectedFigure.name}</div>
+                    {selectedFigure.party && (
+                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <Badge variant="outline" className="text-[10px]">{selectedFigure.party}</Badge>
+                        {selectedFigure.state && <span>{selectedFigure.state}</span>}
+                        {selectedFigure.chamber && <span>• {selectedFigure.chamber}</span>}
+                      </div>
+                    )}
                     {selectedFigure.consistencyScore !== undefined && (
                       <div className="flex items-center gap-2 mt-2 text-sm">
                         <span>Consistency:</span>

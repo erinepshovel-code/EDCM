@@ -11,6 +11,7 @@ import { registerChatRoutes } from "./replit_integrations/chat";
 import { processAssistantRequest, parseTextToTurns, analyzeEDCM } from "./edcm-assistant";
 import type { AnalyticsIn } from "@shared/edcm-types";
 import { toCanonicalConversation } from "@shared/canonical-schema";
+import { searchMembers, getMemberDetails, getRecentBillsByMember } from "./congress-api";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -491,6 +492,53 @@ export async function registerRoutes(
       return res.json({ ok: true });
     } catch (err: any) {
       return res.status(500).json({ ok: false, error: String(err?.message ?? err) });
+    }
+  });
+
+  // =================== POLITICAL INTELLIGENCE API ===================
+
+  app.get("/api/political/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query || query.length < 2) {
+        return res.status(400).json({ error: "Query too short" });
+      }
+
+      const apiKey = process.env.CONGRESS_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ 
+          error: "CONGRESS_API_KEY not configured",
+          hint: "Get a free key at api.data.gov/signup"
+        });
+      }
+
+      const members = await searchMembers(query, apiKey);
+      res.json({ members });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/political/member/:bioguideId", async (req, res) => {
+    try {
+      const { bioguideId } = req.params;
+      const apiKey = process.env.CONGRESS_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(503).json({ error: "CONGRESS_API_KEY not configured" });
+      }
+
+      const [details, bills] = await Promise.all([
+        getMemberDetails(bioguideId, apiKey),
+        getRecentBillsByMember(bioguideId, apiKey, 5),
+      ]);
+
+      res.json({ 
+        member: details.member,
+        recentBills: bills,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
