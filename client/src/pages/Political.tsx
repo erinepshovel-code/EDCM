@@ -202,9 +202,15 @@ export default function Political() {
                   </div>
                 )}
 
-                {keylessMode && (
+                {isSearching && (
+                  <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-600">
+                    Searching Federal Register...
+                  </div>
+                )}
+
+                {!isSearching && keylessMode && documents.length === 0 && searchResults.length === 0 && !selectedFigure && (
                   <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded text-xs text-emerald-600">
-                    Keyless mode: Using Federal Register + official vote sources
+                    Keyless mode: Search any topic to find Federal Register documents
                   </div>
                 )}
 
@@ -229,22 +235,29 @@ export default function Political() {
                 )}
 
                 {documents.length > 0 && (
-                  <div className="mt-2 border rounded-lg overflow-hidden">
-                    <div className="text-[10px] text-muted-foreground px-2 py-1 bg-muted">Federal Register Documents</div>
+                  <div className="mt-3 border-2 border-emerald-500/30 rounded-lg overflow-hidden bg-emerald-500/5">
+                    <div className="text-xs font-medium text-emerald-700 px-2 py-2 bg-emerald-500/10 flex items-center gap-2">
+                      <FileText className="w-3 h-3" />
+                      Federal Register ({documents.length} found)
+                    </div>
                     {documents.slice(0, 5).map(doc => (
                       <button
                         key={doc.id}
                         onClick={() => loadDocumentForAnalysis(doc)}
-                        className="w-full p-2 text-left hover:bg-accent text-xs border-b last:border-b-0"
+                        className="w-full p-3 text-left hover:bg-emerald-500/10 text-xs border-b border-emerald-500/20 last:border-b-0"
                         data-testid={`doc-${doc.id}`}
                       >
-                        <div className="font-medium truncate">{doc.title}</div>
+                        <div className="font-medium line-clamp-2">{doc.title}</div>
                         <div className="flex items-center gap-2 mt-1 text-muted-foreground">
                           <Badge variant="outline" className="text-[10px]">{doc.type}</Badge>
                           <span>{doc.date}</span>
+                          {doc.agencies?.[0] && <span className="truncate">• {doc.agencies[0]}</span>}
                         </div>
                       </button>
                     ))}
+                    <div className="text-[10px] text-center py-1 text-muted-foreground">
+                      Click a document to load for analysis
+                    </div>
                   </div>
                 )}
 
