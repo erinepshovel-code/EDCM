@@ -101,9 +101,23 @@ export default function Political() {
     }
   };
 
-  const loadDocumentForAnalysis = (doc: PoliticalDocument) => {
-    const text = `${doc.title}\n\n${doc.abstract || ''}`;
-    setPasteText(text);
+  const loadDocumentForAnalysis = async (doc: PoliticalDocument) => {
+    const content = [
+      doc.title,
+      '',
+      doc.abstract || '',
+      '',
+      `Source: ${doc.url}`,
+      `Date: ${doc.date}`,
+      doc.agencies?.length ? `Agencies: ${doc.agencies.join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+    
+    setPasteText(content);
+    setDocuments([]);
+    setSelectedFigure({
+      id: doc.id,
+      name: doc.title.slice(0, 50) + (doc.title.length > 50 ? '...' : ''),
+    });
   };
 
   const selectMember = (member: CongressMember) => {
