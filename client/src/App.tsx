@@ -10,6 +10,7 @@ import PoliticalMode from "@/modes/politics/PoliticalMode";
 import LabMode from "@/modes/lab/LabMode";
 import AIAssistant from "@/pages/AIAssistant";
 import Analysis from "@/pages/Analysis";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <Route path="/lab" component={LabMode} />
       <Route path="/assistant" component={AIAssistant} />
       <Route path="/analysis" component={Analysis} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );
