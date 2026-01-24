@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Send, Plus, Trash2, Bot, User, Loader2, FileText, 
   Upload, Play, BarChart3, GitCompare, FileDown,
-  ChevronRight, AlertTriangle, CheckCircle
+  ChevronRight, AlertTriangle, CheckCircle, HelpCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { HmmmPanel } from '@/components/analysis/HmmmPanel';
@@ -366,15 +366,29 @@ export default function Analysis() {
                   <Bot className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
                   <h2 className="text-lg font-semibold mb-2">EDCM Analysis Assistant</h2>
                   <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-                    I analyze conversation structure without inferring intent or emotion.
-                    Paste a conversation or select an artifact to begin.
+                    I measure structural patterns in conversations: pacing, turn-taking, 
+                    pressure dynamics, and clarity. I report observable metrics (C, R, D, N, E) 
+                    without inferring intent, emotion, or personality.
                   </p>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>1. <strong>Ingest</strong> - Paste or upload text</p>
-                    <p>2. <strong>Analyze</strong> - Run structural analysis</p>
-                    <p>3. <strong>Interpret</strong> - Get pattern summary</p>
-                    <p>4. <strong>Report</strong> - Export findings</p>
+                  <div className="text-xs text-muted-foreground space-y-1 mb-6">
+                    <p>1. <strong>Ingest</strong> - Parse text into speaker turns (A:/B: format)</p>
+                    <p>2. <strong>Analyze</strong> - Compute EDCM metrics from turn structure</p>
+                    <p>3. <strong>Interpret</strong> - Summarize patterns with uncertainty notes</p>
+                    <p>4. <strong>Compare</strong> - Diff two artifacts side-by-side</p>
+                    <p>5. <strong>Report</strong> - Generate exportable findings brief</p>
                   </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setInputValue("Show me a tutorial with an example conversation");
+                      setCurrentMode("ingest");
+                    }}
+                    data-testid="button-tutorial"
+                  >
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Start Tutorial
+                  </Button>
                 </div>
               ) : (
                 messages.map((msg, idx) => (
