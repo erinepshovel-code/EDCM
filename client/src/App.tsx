@@ -12,6 +12,7 @@ import AIAssistant from "@/pages/AIAssistant";
 import Analysis from "@/pages/Analysis";
 import Settings from "@/pages/Settings";
 import Trends from "@/pages/Trends";
+import Political from "@/pages/Political";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +26,7 @@ function Router() {
       <Route path="/analysis" component={Analysis} />
       <Route path="/settings" component={Settings} />
       <Route path="/trends" component={Trends} />
+      <Route path="/political" component={Political} />
       <Route component={NotFound} />
     </Switch>
   );
