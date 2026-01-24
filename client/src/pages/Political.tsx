@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { analyzeEDCM } from '@/edcm/engine';
 import type { EDCMResult } from '../../../shared/edcm-types';
+import type { NewsRecord } from '../../../shared/news-types';
 
 interface PoliticalFigure {
   id: string;
@@ -64,6 +65,8 @@ export default function Political() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [documents, setDocuments] = useState<PoliticalDocument[]>([]);
   const [keylessMode, setKeylessMode] = useState(true);
+  const [newsRecord, setNewsRecord] = useState<NewsRecord | null>(null);
+  const [isAnalyzingNews, setIsAnalyzingNews] = useState(false);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) return;
@@ -137,17 +140,35 @@ export default function Political() {
     if (!pasteText.trim()) return;
     
     setIsAnalyzing(true);
+    setIsAnalyzingNews(true);
+    
     try {
-      const result = await analyzeEDCM({
-        mode: 'political',
-        text: pasteText,
-        enable_analysis: true,
-      });
-      setAnalysisResult(result);
+      const [edcmResult, newsResult] = await Promise.all([
+        analyzeEDCM({
+          mode: 'political',
+          text: pasteText,
+          enable_analysis: true,
+        }),
+        fetch('/api/political/analyze-news', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: pasteText,
+            title: selectedFigure?.name || 'Analysis',
+            outlet: 'User Input',
+          }),
+        }).then(r => r.json()).catch(() => null),
+      ]);
+      
+      setAnalysisResult(edcmResult);
+      if (newsResult?.record) {
+        setNewsRecord(newsResult.record);
+      }
     } catch (err) {
       console.error('Analysis failed:', err);
     } finally {
       setIsAnalyzing(false);
+      setIsAnalyzingNews(false);
     }
   };
 
@@ -441,6 +462,75 @@ export default function Political() {
 
                   <div className="mt-4 pt-3 border-t text-[10px] text-muted-foreground">
                     hmm: Political analysis is session-only. Upgrade for persistent archives.
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {newsRecord && (
+              <Card data-testid="card-distortion-analysis">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Scale className="w-4 h-4" />
+                    Source Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-xs text-muted-foreground">Content Role</div>
+                      <Badge 
+                        variant={newsRecord.content_role === 'primary_speech' ? 'default' : 'secondary'}
+                        className="mt-1"
+                      >
+                        {newsRecord.content_role === 'primary_speech' ? 'Primary Source' : 'Media Narrative'}
+                      </Badge>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <div className="text-xs text-muted-foreground">Distortion Score</div>
+                      <div className={`text-lg font-bold mt-1 ${
+                        newsRecord.distortion_score < 0.3 ? 'text-emerald-500' :
+                        newsRecord.distortion_score < 0.6 ? 'text-amber-500' : 'text-red-500'
+                      }`}>
+                        {(newsRecord.distortion_score * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  {newsRecord.extracted_quotes.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-xs font-medium mb-2">
+                        Extracted Quotes ({newsRecord.extracted_quotes.length})
+                      </div>
+                      <div className="space-y-2">
+                        {newsRecord.extracted_quotes.slice(0, 3).map(quote => (
+                          <div key={quote.id} className="p-2 bg-accent/30 rounded text-xs">
+                            <div className="font-medium">{quote.speaker}:</div>
+                            <div className="text-muted-foreground mt-1 italic">"{quote.text}"</div>
+                            {quote.is_truncated && (
+                              <Badge variant="outline" className="mt-1 text-[10px]">Truncated</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {newsRecord.metadata.editorial_markers.length > 0 && (
+                    <div className="mb-3">
+                      <div className="text-xs font-medium mb-1">Editorial Markers Detected</div>
+                      <div className="flex flex-wrap gap-1">
+                        {newsRecord.metadata.editorial_markers.map((marker, idx) => (
+                          <Badge key={idx} variant="outline" className="text-[10px] bg-amber-500/10">
+                            {marker}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-muted-foreground pt-2 border-t">
+                    Speaker: {newsRecord.speaker} | Carrier: {newsRecord.carrier} | Type: {newsRecord.source_type}
                   </div>
                 </CardContent>
               </Card>

@@ -13,6 +13,7 @@ import type { AnalyticsIn } from "@shared/edcm-types";
 import { toCanonicalConversation } from "@shared/canonical-schema";
 import { searchMembers, getMemberDetails, getRecentBillsByMember } from "./congress-api";
 import { searchPoliticalDocuments, getKeylessSourceInfo, searchFederalRegister } from "./political-ingest";
+import { processNewsContent, getDistortionSummary } from "./news-ingest";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -550,6 +551,33 @@ export async function registerRoutes(
       });
       
       res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/political/analyze-news", async (req, res) => {
+    try {
+      const { url, title, outlet, content, publishDate } = req.body;
+      
+      if (!content || content.length < 50) {
+        return res.status(400).json({ error: "Content too short for analysis" });
+      }
+
+      const record = processNewsContent({
+        url: url || "",
+        title: title || "Untitled",
+        outlet: outlet || "Unknown",
+        content,
+        publishDate,
+      });
+      
+      const summary = getDistortionSummary(record);
+
+      res.json({ 
+        record,
+        summary,
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
