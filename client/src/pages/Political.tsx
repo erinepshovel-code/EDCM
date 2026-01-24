@@ -41,6 +41,17 @@ interface RhetoricSample {
   type: 'speech' | 'interview' | 'post' | 'vote';
 }
 
+interface PoliticalDocument {
+  id: string;
+  title: string;
+  type: string;
+  source: string;
+  date: string;
+  url: string;
+  abstract?: string;
+  agencies?: string[];
+}
+
 export default function Political() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CongressMember[]>([]);
@@ -51,6 +62,8 @@ export default function Political() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<PoliticalDocument[]>([]);
+  const [keylessMode, setKeylessMode] = useState(true);
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) return;
@@ -58,20 +71,20 @@ export default function Political() {
     setIsSearching(true);
     setApiError(null);
     setSearchResults([]);
+    setDocuments([]);
     
     try {
       const res = await fetch(`/api/political/search?q=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
       
       if (!res.ok) {
-        setApiError(data.hint || data.error);
-        setSelectedFigure({
-          id: crypto.randomUUID(),
-          name: searchQuery.trim(),
-        });
+        setApiError(data.error);
       } else {
         setSearchResults(data.members || []);
-        if (data.members?.length === 0) {
+        setDocuments(data.documents || []);
+        setKeylessMode(data.keylessMode);
+        
+        if ((data.members?.length === 0) && (data.documents?.length === 0)) {
           setSelectedFigure({
             id: crypto.randomUUID(),
             name: searchQuery.trim(),
@@ -86,6 +99,11 @@ export default function Political() {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const loadDocumentForAnalysis = (doc: PoliticalDocument) => {
+    const text = `${doc.title}\n\n${doc.abstract || ''}`;
+    setPasteText(text);
   };
 
   const selectMember = (member: CongressMember) => {
@@ -170,8 +188,15 @@ export default function Political() {
                   </div>
                 )}
 
+                {keylessMode && (
+                  <div className="mt-2 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded text-xs text-emerald-600">
+                    Keyless mode: Using Federal Register + official vote sources
+                  </div>
+                )}
+
                 {searchResults.length > 0 && (
                   <div className="mt-2 border rounded-lg overflow-hidden">
+                    <div className="text-[10px] text-muted-foreground px-2 py-1 bg-muted">Congress Members</div>
                     {searchResults.map(member => (
                       <button
                         key={member.bioguideId}
@@ -183,6 +208,26 @@ export default function Political() {
                         <div className="flex items-center gap-1 text-muted-foreground">
                           <Badge variant="outline" className="text-[10px]">{member.party}</Badge>
                           <span>{member.state}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {documents.length > 0 && (
+                  <div className="mt-2 border rounded-lg overflow-hidden">
+                    <div className="text-[10px] text-muted-foreground px-2 py-1 bg-muted">Federal Register Documents</div>
+                    {documents.slice(0, 5).map(doc => (
+                      <button
+                        key={doc.id}
+                        onClick={() => loadDocumentForAnalysis(doc)}
+                        className="w-full p-2 text-left hover:bg-accent text-xs border-b last:border-b-0"
+                        data-testid={`doc-${doc.id}`}
+                      >
+                        <div className="font-medium truncate">{doc.title}</div>
+                        <div className="flex items-center gap-2 mt-1 text-muted-foreground">
+                          <Badge variant="outline" className="text-[10px]">{doc.type}</Badge>
+                          <span>{doc.date}</span>
                         </div>
                       </button>
                     ))}

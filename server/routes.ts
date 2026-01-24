@@ -12,6 +12,7 @@ import { processAssistantRequest, parseTextToTurns, analyzeEDCM } from "./edcm-a
 import type { AnalyticsIn } from "@shared/edcm-types";
 import { toCanonicalConversation } from "@shared/canonical-schema";
 import { searchMembers, getMemberDetails, getRecentBillsByMember } from "./congress-api";
+import { searchPoliticalDocuments, getKeylessSourceInfo, searchFederalRegister } from "./political-ingest";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -496,6 +497,11 @@ export async function registerRoutes(
   });
 
   // =================== POLITICAL INTELLIGENCE API ===================
+  // Keyless-by-default: core features work without API keys
+
+  app.get("/api/political/sources", (req, res) => {
+    res.json(getKeylessSourceInfo());
+  });
 
   app.get("/api/political/search", async (req, res) => {
     try {
@@ -505,15 +511,45 @@ export async function registerRoutes(
       }
 
       const apiKey = process.env.CONGRESS_API_KEY;
-      if (!apiKey) {
-        return res.status(503).json({ 
-          error: "CONGRESS_API_KEY not configured",
-          hint: "Get a free key at api.data.gov/signup"
-        });
+      
+      const keylessResults = await searchPoliticalDocuments(query);
+      
+      let members: any[] = [];
+      let enriched = false;
+      
+      if (apiKey) {
+        try {
+          members = await searchMembers(query, apiKey);
+          enriched = true;
+        } catch (e) {
+          console.log("Congress API enrichment failed, using keyless sources");
+        }
       }
 
-      const members = await searchMembers(query, apiKey);
-      res.json({ members });
+      res.json({ 
+        members,
+        documents: keylessResults.federalRegister,
+        votesSources: keylessResults.votesSummary,
+        enriched,
+        keylessMode: !apiKey,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/political/federal-register", async (req, res) => {
+    try {
+      const term = req.query.term as string;
+      const agency = req.query.agency as string;
+      
+      const results = await searchFederalRegister({
+        term,
+        agencies: agency ? [agency] : undefined,
+        perPage: 20,
+      });
+      
+      res.json(results);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -525,7 +561,12 @@ export async function registerRoutes(
       const apiKey = process.env.CONGRESS_API_KEY;
       
       if (!apiKey) {
-        return res.status(503).json({ error: "CONGRESS_API_KEY not configured" });
+        return res.json({ 
+          member: null,
+          recentBills: [],
+          keylessMode: true,
+          hint: "Add CONGRESS_API_KEY for member details"
+        });
       }
 
       const [details, bills] = await Promise.all([
@@ -536,6 +577,7 @@ export async function registerRoutes(
       res.json({ 
         member: details.member,
         recentBills: bills,
+        keylessMode: false,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

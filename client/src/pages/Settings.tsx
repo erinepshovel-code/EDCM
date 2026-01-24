@@ -61,6 +61,32 @@ export default function Settings() {
         <button style={{ marginTop: 10 }} onClick={doExport} data-testid="button-export">Export JSON</button>
       </div>
 
+      <div style={{ border: "1px solid #3333", borderRadius: 12, padding: 12, marginTop: 12 }}>
+        <div style={{ fontWeight: 600 }}>Political Intelligence Sources</div>
+        <div style={{ opacity: 0.8, marginTop: 6 }}>
+          Political ingest works without any API key using official public sources:
+        </div>
+        <ul style={{ fontSize: 13, marginTop: 8, paddingLeft: 20 }}>
+          <li>Federal Register (rulemaking, notices)</li>
+          <li>House/Senate Roll Call Votes (XML)</li>
+        </ul>
+        <div style={{ marginTop: 10, padding: 10, background: "rgba(0,0,0,0.05)", borderRadius: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Optional: Enrichment API Key</div>
+          <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+            Add an api.data.gov key to unlock Congress.gov API, GovInfo, and Regulations.gov.
+          </div>
+          <div style={{ fontSize: 12, marginTop: 8 }}>
+            <a href="https://api.data.gov/signup/" target="_blank" rel="noopener noreferrer" 
+               style={{ color: "#0066cc" }}>
+              Get a free key at api.data.gov/signup
+            </a>
+          </div>
+          <div style={{ fontSize: 11, opacity: 0.6, marginTop: 4 }}>
+            After signup, add CONGRESS_API_KEY to your Secrets tab.
+          </div>
+        </div>
+      </div>
+
       <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>
         hmm: Data value vs user trust — keep defaults local + metrics-only.
       </div>

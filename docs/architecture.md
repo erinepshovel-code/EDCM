@@ -147,14 +147,31 @@ Paid Pro = **high-resolution social & political observatory**
 - [x] Settings page for sync preferences
 - [x] Trends visualization
 - [x] AI-assisted analysis mode
-
-## In Progress
-- [ ] Clipboard listener for passive capture
-- [ ] Political figure analysis mode
-- [ ] Canonical output schema across all endpoints
+- [x] Clipboard listener for passive capture
+- [x] Political figure analysis mode (local-only Tier 1)
+- [x] Canonical output schema across all endpoints
+- [x] Keyless-by-default political ingest
+  - Federal Register API (no key)
+  - House/Senate vote source stubs
+  - Optional Congress.gov API enrichment
 
 ## Planned
 - [ ] Message sync integration (Tier 2)
 - [ ] Multi-figure political archive (Tier 2)
 - [ ] Real-time political analysis (Tier 3)
 - [ ] Subscription/tier management
+- [ ] House/Senate XML vote parsing (full implementation)
+
+---
+
+# KEYLESS MODE SOURCES
+
+Political ingest works without API keys using:
+- **Federal Register API** (no key): Official rulemaking, notices, executive publications
+- **House Roll Call Votes** (XML, no key): clerk.house.gov
+- **Senate Roll Call Votes** (XML, no key): senate.gov
+
+Optional enrichment with api.data.gov key:
+- Congress.gov API
+- GovInfo API
+- Regulations.gov API
