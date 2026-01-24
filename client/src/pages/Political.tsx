@@ -36,6 +36,23 @@ export default function Political() {
   const [pasteText, setPasteText] = useState('');
   const [analysisResult, setAnalysisResult] = useState<EDCMResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    
+    setIsSearching(true);
+    
+    setTimeout(() => {
+      setSelectedFigure({
+        id: crypto.randomUUID(),
+        name: searchQuery.trim(),
+        lastAnalysis: undefined,
+        consistencyScore: undefined,
+      });
+      setIsSearching(false);
+    }, 500);
+  };
 
   const handleAnalyze = async () => {
     if (!pasteText.trim()) return;
@@ -79,14 +96,25 @@ export default function Political() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Input
-                  placeholder="Enter figure name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  data-testid="input-political-search"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter figure name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    data-testid="input-political-search"
+                  />
+                  <Button 
+                    onClick={handleSearch}
+                    disabled={!searchQuery.trim() || isSearching}
+                    size="sm"
+                    data-testid="button-search-figure"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Free tier: One figure at a time, session-only (no archive).
+                  Free tier: Paste statements below for analysis. Automatic fetch coming soon.
                 </p>
 
                 {selectedFigure && (
