@@ -8,7 +8,6 @@ import Home from "@/pages/Home";
 import DatingMode from "@/modes/dating/DatingMode";
 import PoliticalMode from "@/modes/politics/PoliticalMode";
 import LabMode from "@/modes/lab/LabMode";
-import AIAssistant from "@/pages/AIAssistant";
 import Analysis from "@/pages/Analysis";
 import Settings from "@/pages/Settings";
 import Trends from "@/pages/Trends";
@@ -22,7 +21,6 @@ function Router() {
       <Route path="/dating" component={DatingMode} />
       <Route path="/politics" component={PoliticalMode} />
       <Route path="/lab" component={LabMode} />
-      <Route path="/assistant" component={AIAssistant} />
       <Route path="/analysis" component={Analysis} />
       <Route path="/settings" component={Settings} />
       <Route path="/trends" component={Trends} />
