@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "edcmbone"
+version = "0.1.0"
+authors = [{ name = "Erin Patrick Spencer", email = "erin.eps.hovel@gmail.com" }]
+description = "EDCM with PCNA/PCTA framework"
+readme = "../Documentation/README.md"
+requires-python = ">=3.8"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/edcmbone"]
