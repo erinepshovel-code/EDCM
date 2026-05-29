@@ -356,7 +356,7 @@ export function LiveAudioDiscernment() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamIntervalRef = useRef<NodeJS.Timer | null>(null);
+  const streamIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleConsent = () => {
     localStorage.setItem(CONSENT_STORAGE_KEY, "true");
